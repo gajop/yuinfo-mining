@@ -1,12 +1,14 @@
 #!/usr/bin/python
+# -*- coding: utf8 -*- 
 from __future__ import print_function
 import os
 import re
-encoding = "utf-8"
 
 SCRIPT_PATH = os.path.realpath(__file__)
 SCRIPT_DIR = os.path.dirname(SCRIPT_PATH)
 DATA_DIR = os.path.realpath(SCRIPT_DIR + "/../data")
+
+regLatinica = "[A-Za-zČčĆćŠšĐđŽž]"
 
 def parseReferences(content):
     references = []
@@ -30,7 +32,7 @@ def preAbstract(content):
     abstractStart = int(10e50)
 
     #todo add checks for cyrillic 
-    abstractRSMatch = re.search(r"Sadr|Apstrakt", content)
+    abstractRSMatch = re.search(u"Sadržaj|Apstrakt|Садржај", content)
     if abstractRSMatch:
         abstractStart = min(abstractRSMatch.span()[0], abstractStart)
     abstractENMatch = re.search(r"Abstract", content)
@@ -40,16 +42,19 @@ def preAbstract(content):
     return content[:abstractStart]
 
 def parseTitle(content):
-    titleEN = None
     titleRS = None
+    titleEN = None
     preAbstractContent = preAbstract(content)
-    print(preAbstractContent)
-    titleENMatch = re.search(r"[A-Z\s]*", preAbstractContent)
-
-    if titleENMatch:
-        begin, end = titleENMatch.span()
-        titleEN = preAbstractContent[begin:end]
-        print("EN: " + titleEN)
+    titles = preAbstractContent.split("\n")
+    titleRS = titles[0]
+    titleEN = titles[1]
+#    titleENMatch = re.search(r"[A-Z\s]*", preAbstractContent)
+#
+#    if titleENMatch:
+#        begin, end = titleENMatch.span()
+#        titleEN = preAbstractContent[begin:end]
+    print(titleRS)
+    print(titleEN)
     return [titleEN, titleRS]
 
 for fname in os.listdir(DATA_DIR):
@@ -76,5 +81,3 @@ for fname in os.listdir(DATA_DIR):
         print("References: ")
         for i, ref in enumerate(references):
             print(str(i+1) + "." + ref)
-        break
-
