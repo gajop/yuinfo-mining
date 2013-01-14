@@ -55,6 +55,7 @@ regLatinica = PUT LATIN  CHARS
 		}
 		return references.toArray(new String[references.size()]);
 	}
+	
 	public String preAbstract(String content) {
 		if (content.matches(".*Sadržaj|Apstrakt|Садржај.*")) {
 			String abstractStrings [] = content.split("Sadržaj|Apstrakt|Садржај");
@@ -64,13 +65,90 @@ regLatinica = PUT LATIN  CHARS
 		return "";
 	}
 	
+	public String[] parseTitles(String content) {
+		List<String> titles = new LinkedList<String>();
+		return titles.toArray(new String[titles.size()]);
+	}
+	
+	public String[] parseAuthors(String content) {
+		List<String> authors = new LinkedList<String>();
+		return authors.toArray(new String[authors.size()]);
+	}
+	
 	public String [] parseAbstract(String content) {
 		String abstractRS = null;
 		String abstractEN = null;
-		if (content.matches(".*(Sadržaj|Apstrakt|Садржај).*")) {
-			String abstractStrings [] = content.split("Sadržaj|Apstrakt|Садржај");
-			System.out.println(abstractStrings[1]);
-			abstractRS = abstractStrings[1];
+		
+		int abstractRSStartIndx = -1;
+		int abstractRSEndIndx = -1;
+		int abstractRSAuthorsLength = -1;
+		for (String abstractAuthors : new String[] { "Sadržaj", "Apstrakt", "Садржај" }) {
+			if (content.contains(abstractAuthors)) {
+				abstractRSStartIndx = content.indexOf(abstractAuthors) + abstractAuthors.length();
+				abstractRSAuthorsLength = abstractAuthors.length();
+			}
+		}
+		
+		int abstractENStartIndx = -1;
+		int abstractENEndIndx = -1;
+		int abstractENAuthorsLength = -1;
+		for (String abstractAuthors : new String[] { "Abstract" }) {
+			if (content.contains(abstractAuthors)) {
+				abstractENStartIndx = content.indexOf(abstractAuthors) + abstractAuthors.length();
+				abstractENAuthorsLength = abstractAuthors.length();
+			}
+		}
+		
+		if (abstractRSStartIndx >= 0) {
+			abstractRS = content.substring(abstractRSStartIndx);
+		}
+		if (abstractENStartIndx >= 0) {
+			abstractEN = content.substring(abstractENStartIndx);
+		}
+		
+		//abstracts come in order		
+		if (abstractRSStartIndx >= 0 && abstractENStartIndx >= 0) {
+			if (abstractRSStartIndx > abstractENStartIndx) {
+				abstractENEndIndx = abstractRSStartIndx - abstractRSAuthorsLength;
+				abstractEN = content.substring(abstractENStartIndx, abstractENEndIndx);
+			} else {
+				abstractRSEndIndx = abstractENStartIndx - abstractENAuthorsLength;								
+				abstractRS = content.substring(abstractRSStartIndx, abstractRSEndIndx);
+			}
+		}
+		
+		for (int i = 0; i <= 1; i++) {
+			String abstractContent = null;
+			int abstractStartIndx = -1;
+			int abstractEndIndx = -1;
+			if (i == 0) {
+				abstractContent = abstractRS;
+				abstractStartIndx = abstractRSStartIndx;
+				abstractEndIndx = abstractRSEndIndx;
+			} else {
+				abstractContent = abstractEN;
+				abstractStartIndx = abstractENStartIndx;
+				abstractEndIndx = abstractENEndIndx;
+			}
+			if (abstractStartIndx >= 0 && abstractEndIndx == -1) {
+				int indx = 0;
+				boolean found = false;
+				for (String line : abstractContent.split("\n")) {
+					if (line.matches("[\\d\\sA-ZČĆŠĐŽ\\p{Punct}]*")) {						
+						//System.out.println("MATCH: " + line);
+						found = true;
+						break;
+					}
+					indx = indx + line.length() + 1;
+				}
+				if (found) {
+					if (i == 0) {
+						abstractRS = abstractRS.substring(0, indx);
+					} else {
+						abstractEN = abstractEN.substring(0, indx);
+					}
+				}
+			}
 		}
 		return new String[] { abstractEN, abstractRS };
 	}
@@ -92,7 +170,7 @@ def preAbstract(content):
     
      */
 	
-	public String[] parseTitle(String content) {
+/*	public String[] parseAuthors(String content) {
 		String titleRS = null;
 		String titleEN = null;
 		String preAbstractContent = preAbstract(content);
@@ -101,9 +179,9 @@ def preAbstract(content):
 		//titleEN = titles[1];		
 		
 		return new String[] { titleEN, titleRS };
-	}
+	}*/
 	/*
-def parseTitle(content):
+def parseAuthors(content):
     titleRS = None
     titleEN = None
     preAbstractContent = preAbstract(content)
@@ -154,12 +232,12 @@ def parseTitle(content):
 
 				String titleEN = null;
 				String titleRS = null;
-				String[] titles = parseTitle(content);
+				String[] titles = parseTitles(content);
 				titleEN = titles[0];
 				titleRS = titles[1];
 			//	if (true) continue;
-				String authorsEN = null;
-				String authorsRS = null;
+				
+				String [] authors = parseAuthors(content);
 				
 				String abstracts [] = parseAbstract(content);
 				String abstractEN = abstracts[0];
@@ -167,12 +245,14 @@ def parseTitle(content):
 
 				String[] references = parseReferences(content);
 		        if (titleEN != null || titleRS != null) {
-		        	System.out.println("Titles: ");
+		        	System.out.println("Authorss: ");
 		            if (titleEN != null) {
-		                System.out.println("Title EN: " + titleEN);
+		            	titleENCount++;
+		                System.out.println("Authors EN: " + titleEN);
 		            } 
 		        	if (titleRS != null) {
-		            	System.out.println("Title RS: " + titleRS);
+		        		titleRSCount++;
+		            	System.out.println("Authors RS: " + titleRS);
 					}
 		        }
 		        if (abstractEN != null || abstractRS != null) {
@@ -185,6 +265,12 @@ def parseTitle(content):
 		        		abstractRSCount++;
 		            	System.out.println("Abstract RS: " + abstractRS);
 					}
+		        }
+		        if (authors.length > 0) {
+		        	System.out.println("Authors: ");
+		            for (String author : authors) {
+		            	System.out.print(author + ", ");
+		            }
 		        }
 		        System.out.println("References: ");
 		        for (int i = 0; i < references.length; i++) {
