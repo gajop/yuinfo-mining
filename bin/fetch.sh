@@ -1,6 +1,6 @@
 #!/bin/bash
 
-start_year=2009
+start_year=2006
 end_year=2012
 
 start_id=0
