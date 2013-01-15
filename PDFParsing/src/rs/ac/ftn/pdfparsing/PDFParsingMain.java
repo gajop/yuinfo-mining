@@ -12,7 +12,14 @@ import java.util.regex.Pattern;
 import org.apache.commons.io.FileUtils;
 
 public class PDFParsingMain {
-
+	
+	int abstractRSStartIndx = -1;
+	int abstractRSEndIndx = -1;
+	int abstractRSAuthorsLength = -1;
+	
+	int abstractENStartIndx = -1;
+	int abstractENEndIndx = -1;
+	int abstractENAuthorsLength = -1;
 	/** python code:
 	 * #!/usr/bin/python
 # -*- coding: utf8 -*- 
@@ -28,6 +35,7 @@ regLatinica = PUT LATIN  CHARS
 */
 
 	String regLatinica = "[A-Za-zČčĆćŠšĐđŽž]";
+	String cyrLower = "љњертзуиопшђасдфгхјклчћжжџцвбнж";
 	public String[] parseReferences(String content) {
 		List<String> references = new LinkedList<String>();
 		for (String refStart : new String[] {"LITERATURA", "ЛИТЕРАТУРА"}) {
@@ -57,41 +65,63 @@ regLatinica = PUT LATIN  CHARS
 	}
 	
 	public String preAbstract(String content) {
-		if (content.matches(".*Sadržaj|Apstrakt|Садржај.*")) {
-			String abstractStrings [] = content.split("Sadržaj|Apstrakt|Садржај");
-			System.out.println(abstractStrings[1]);
+		int preAbstractEndIndx = -1;
+		for (String abstractAuthors : new String[] { "Sadržaj", "Apstrakt", "Садржај" }) {
+			if (content.contains(abstractAuthors)) {
+				preAbstractEndIndx = content.indexOf(abstractAuthors) + abstractAuthors.length();
+			}
 		}
-		Pattern.matches("", content);
-		return "";
+		if (preAbstractEndIndx >= 0) {
+			return content.substring(0, preAbstractEndIndx);
+		}
+		return null;
 	}
 	
 	public String[] parseTitles(String content) {
-		List<String> titles = new LinkedList<String>();
-		return titles.toArray(new String[titles.size()]);
+		String titleRS = null;
+		String titleEN = null;
+		String preAbstractContent = preAbstract(content);
+		System.out.println(preAbstractContent);
+		//String[] titles = preAbstractContent.split("\n");
+		//titleRS = titles[0];
+		//titleEN = titles[1];		
+		
+		return new String[] { titleEN, titleRS };
 	}
 	
 	public String[] parseAuthors(String content) {
 		List<String> authors = new LinkedList<String>();
+		//System.out.println("Parsing authors...!!!!!!!!!!!!");
+		int authorEndIndx = Math.min(abstractRSStartIndx, abstractENStartIndx);
+		if (authorEndIndx >= 0) {
+			String authorsString = content.substring(0, authorEndIndx);
+//			System.out.println(authorsString);
+			for (String line : authorsString.split("\n")) {
+		//		System.out.println("Line: " + line);
+				if (line.matches(".*([a-zčćšđž " + cyrLower + "]){2,}.*")) {
+		//			System.out.println("1: " + line);
+					authorsString = line;
+					break;
+				}
+			}			
+			for (String author : authorsString.split(",")) {
+				authors.add(author);
+			}
+		}
+		///System.out.println("DONE!!!!!!!!!");
 		return authors.toArray(new String[authors.size()]);
 	}
 	
 	public String [] parseAbstract(String content) {
 		String abstractRS = null;
 		String abstractEN = null;
-		
-		int abstractRSStartIndx = -1;
-		int abstractRSEndIndx = -1;
-		int abstractRSAuthorsLength = -1;
+
 		for (String abstractAuthors : new String[] { "Sadržaj", "Apstrakt", "Садржај" }) {
 			if (content.contains(abstractAuthors)) {
 				abstractRSStartIndx = content.indexOf(abstractAuthors) + abstractAuthors.length();
 				abstractRSAuthorsLength = abstractAuthors.length();
 			}
 		}
-		
-		int abstractENStartIndx = -1;
-		int abstractENEndIndx = -1;
-		int abstractENAuthorsLength = -1;
 		for (String abstractAuthors : new String[] { "Abstract" }) {
 			if (content.contains(abstractAuthors)) {
 				abstractENStartIndx = content.indexOf(abstractAuthors) + abstractAuthors.length();
@@ -169,17 +199,6 @@ def preAbstract(content):
     return content[:abstractStart]
     
      */
-	
-/*	public String[] parseAuthors(String content) {
-		String titleRS = null;
-		String titleEN = null;
-		String preAbstractContent = preAbstract(content);
-		//String[] titles = preAbstractContent.split("\n");
-		//titleRS = titles[0];
-		//titleEN = titles[1];		
-		
-		return new String[] { titleEN, titleRS };
-	}*/
 	/*
 def parseAuthors(content):
     titleRS = None
@@ -221,7 +240,14 @@ def parseAuthors(content):
 		for (File file : dir.listFiles()) {			
 			String filePath = file.getAbsolutePath();
 			String fileName = file.getName();
-			if (Pattern.matches(".*.txt", fileName)) {
+			if (Pattern.matches(".*.txt", fileName)) {				
+				abstractRSStartIndx = -1;
+				abstractRSEndIndx = -1;
+				abstractRSAuthorsLength = -1;
+				abstractENStartIndx = -1;
+				abstractENEndIndx = -1;
+				abstractENAuthorsLength = -1;
+				
 				totalFiles++;
 				if (totalFiles >= 100) {
 					break;
@@ -236,23 +262,24 @@ def parseAuthors(content):
 				titleEN = titles[0];
 				titleRS = titles[1];
 			//	if (true) continue;
-				
-				String [] authors = parseAuthors(content);
+								
 				
 				String abstracts [] = parseAbstract(content);
 				String abstractEN = abstracts[0];
 				String abstractRS = abstracts[1];
+				
+				String [] authors = parseAuthors(content);
 
 				String[] references = parseReferences(content);
 		        if (titleEN != null || titleRS != null) {
 		        	System.out.println("Authorss: ");
 		            if (titleEN != null) {
 		            	titleENCount++;
-		                System.out.println("Authors EN: " + titleEN);
+		                System.out.println("Titles EN: " + titleEN);
 		            } 
 		        	if (titleRS != null) {
 		        		titleRSCount++;
-		            	System.out.println("Authors RS: " + titleRS);
+		            	System.out.println("Titles RS: " + titleRS);
 					}
 		        }
 		        if (abstractEN != null || abstractRS != null) {
@@ -267,20 +294,22 @@ def parseAuthors(content):
 					}
 		        }
 		        if (authors.length > 0) {
-		        	System.out.println("Authors: ");
+		        	System.out.print("Authors: ");
+		        	authorCount++;
 		            for (String author : authors) {
 		            	System.out.print(author + ", ");
 		            }
-		        }
-		        System.out.println("References: ");
-		        for (int i = 0; i < references.length; i++) {
-		        	String ref = references[i];
-		       // 	System.out.println((i+1) + "." + ref);
+		            System.out.println();
 		        }
 		        if (references.length > 0) {
+			        System.out.println("References: ");
+			        for (int i = 0; i < references.length; i++) {
+			        	String ref = references[i];
+			        	System.out.println((i+1) + "." + ref);
+			        }
 		        	refCount++;
 		        }
-		        //if (true) break;
+		     //   if (true) break;
 			}
 		}
 		System.out.println("Successfully parsed references: " + refCount + "/" + totalFiles);
