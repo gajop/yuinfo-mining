@@ -3,26 +3,41 @@ package rs.ac.ftn.pdfparsing;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Vector;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.commons.io.FileUtils;
+import org.json.simple.JSONArray;
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
+
+import rs.ac.ftn.pdfparsing.model.Article;
+import rs.ac.ftn.pdfparsing.model.Library;
 
 public class PDFParsingMain {
-	
+
+	Library library = Library.getInstance();
 	int abstractRSStartIndx = -1;
 	int abstractRSEndIndx = -1;
 	int abstractRSAuthorsLength = -1;
 	
 	int abstractENStartIndx = -1;
 	int abstractENEndIndx = -1;
-	int abstractENAuthorsLength = -1;
-	
+	int abstractENAuthorsLength = -1;	
 	
 	int refCount = 0;
 	int titleENCount = 0;
@@ -31,6 +46,14 @@ public class PDFParsingMain {
 	int abstractRSCount = 0;
 	int authorCount = 0;
 	int totalFiles = 0;
+	
+	int totalFilesMatchedMeta = 0;
+	
+	int year;
+	String topic;
+	
+	int startYear = Integer.MAX_VALUE;
+	int endYear = Integer.MIN_VALUE;
 	/** python code:
 	 * #!/usr/bin/python
 # -*- coding: utf8 -*- 
@@ -133,16 +156,35 @@ regLatinica = PUT LATIN  CHARS
 		String abstractRS = null;
 		String abstractEN = null;
 
-		for (String abstractAuthors : new String[] { "Sadržaj", "Apstrakt", "Садржај" }) {
-			if (content.contains(abstractAuthors)) {
-				abstractRSStartIndx = content.indexOf(abstractAuthors) + abstractAuthors.length();
+		//System.out.println(Pattern.quote("Sadržaj|Apstrakt|Садржај"));
+		/*Pattern serbianApstract = Pattern.compile(Pattern.quote(".*(Sadržaj)|(Apstrakt)|(Садржај).*"), Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);		
+			Matcher m = serbianApstract.matcher(content);
+			if (m.find()) {
+				System.out.println("Found pattern!");
+				abstractRSStartIndx = m.start();
+				abstractRSAuthorsLength = m.end() - m.start();
+			}*/
+		for (String abstractAuthors : new String[] { 
+				"Sadržaj", "Apstrakt", "Садржај",
+				"Rezime", "SAŽETAK", //alternative spellings...
+				"Sadr aj", "Sadrž aj", "SAŽ ETAK", "С адр ж ај", "Sadrž", "A P S T R A K T", "С адр ај", "С а ржа", "С ад р ж ај", "С а држ ј", "Sadrž aj", "Sadrž aj", "Sadžaj", "Sadrˇaj", "Sadrţaj", /* due to PDF parsing errors */ 
+				"Sadrzaj", "ABSTRAKT" /* spelling errors */
+				}) {
+			if (content.toLowerCase().contains(abstractAuthors.toLowerCase())) {
+				abstractRSStartIndx = content.toLowerCase().indexOf(abstractAuthors.toLowerCase()) + abstractAuthors.length();
 				abstractRSAuthorsLength = abstractAuthors.length();
+				break;
 			}
 		}
-		for (String abstractAuthors : new String[] { "Abstract" }) {
-			if (content.contains(abstractAuthors)) {
-				abstractENStartIndx = content.indexOf(abstractAuthors) + abstractAuthors.length();
+		for (String abstractAuthors : new String[] { 
+				"Abstract",
+				"Summary", //alternative spellings...
+				"A B S T R A C T", //PDF parsing errors
+				"Abstrac", "APSTRACT", "Abstact", "Abscract", /* because some people can't spell Abstract right */ }) {
+			if (content.toLowerCase().contains(abstractAuthors.toLowerCase())) {
+				abstractENStartIndx = content.toLowerCase().indexOf(abstractAuthors.toLowerCase()) + abstractAuthors.length();
 				abstractENAuthorsLength = abstractAuthors.length();
+				break;
 			}
 		}
 		
@@ -159,7 +201,7 @@ regLatinica = PUT LATIN  CHARS
 				abstractENEndIndx = abstractRSStartIndx - abstractRSAuthorsLength;
 				abstractEN = content.substring(abstractENStartIndx, abstractENEndIndx);
 			} else {
-				abstractRSEndIndx = abstractENStartIndx - abstractENAuthorsLength;								
+				abstractRSEndIndx = abstractENStartIndx - abstractENAuthorsLength;
 				abstractRS = content.substring(abstractRSStartIndx, abstractRSEndIndx);
 			}
 		}
@@ -244,7 +286,7 @@ def parseAuthors(content):
 		pdfParsingMain.run();
 	}
 	
-	void parseFile(File file) throws IOException {
+	Article parseFile(File file) throws IOException {
 		String filePath = file.getAbsolutePath();
 		abstractRSStartIndx = -1;
 		abstractRSEndIndx = -1;
@@ -257,7 +299,7 @@ def parseAuthors(content):
 		System.out.println("Parsing plaintext file: " + filePath);
 		String content = FileUtils.readFileToString(file);
 	//	System.out.println(content);
-
+		
 		String titleEN = null;
 		String titleRS = null;
 		String[] titles = parseTitles(content);
@@ -293,6 +335,13 @@ def parseAuthors(content):
             	System.out.println("Abstract RS: " + abstractRS);
 			}
         }
+        if ((abstractEN == null && !BlackListedFiles.getInstance().hasNoEnglish(filePath)) 
+        		|| (abstractRS == null && !BlackListedFiles.getInstance().hasNoSerbian(filePath))) {
+        	System.out.println(content);
+        	System.err.println("Failed to parse " + ((abstractEN == null)?"English abstract ":"") + 
+        			((abstractRS == null)?"Serbian abstract ":""));
+        	throw new Error("abstract parsing error " + filePath); 
+        }
         if (authors.length > 0) {
         	System.out.print("Authors: ");
         	authorCount++;
@@ -309,10 +358,13 @@ def parseAuthors(content):
 	        }
         	refCount++;
         }
+        Article article = new Article(authors, titleEN, titleRS, abstractEN, abstractRS, year, topic, file.getName());
+        library.addArticle(article);
+        return article;
      //   if (true) break;
 	}
 	
-	private void recurseDirectory(File dir) throws IOException, InterruptedException {
+	private void recurseDirectory(File dir) throws Exception {
 		File[] files = dir.listFiles();
 		Vector<String> fileNames = new Vector<String>();
 		//populate list of .pdf files that have been transformed to .txt files
@@ -322,8 +374,19 @@ def parseAuthors(content):
 				fileNames.add(fileName);
 			}
 		}
-		for (File file : files) {	
+		for (File file : files) {
+			String filePath = file.getAbsolutePath();
+			if (BlackListedFiles.getInstance().isBlackListed(filePath)) {
+				continue;
+			}
 			if (file.isDirectory()) {
+				if (file.getName().matches("\\d+")) {
+					year = Integer.valueOf(file.getName());
+					startYear = Math.min(year, startYear);
+					endYear = Math.max(year, endYear);
+				} else if (!file.getName().equals("data")) {
+					topic = file.getName();
+				}
 				recurseDirectory(file);
 			} else {
 				String fileName = file.getName();
@@ -334,7 +397,6 @@ def parseAuthors(content):
 					String txtFilePath = fileName.replace(".pdf", ".txt");
 					if (!fileNames.contains(txtFilePath)) {
 						System.out.println("PDF doesn't exist: " + fileName);
-						String filePath = file.getAbsolutePath();
 						Process process = Runtime.getRuntime().exec("pdftotext " + filePath);
 						process.waitFor();
 						String newFilePath = dir.getAbsolutePath() + File.separator + txtFilePath;
@@ -350,9 +412,53 @@ def parseAuthors(content):
 		}
 	}
 	
-	private void run() throws IOException, InterruptedException {
+	private void recurseMeta(File dir) throws Exception, ParseException {
+		File[] files = dir.listFiles();
+		for (File file : files) {
+			String filePath = file.getAbsolutePath();
+			if (file.isDirectory()) {
+				if (file.getName().matches("\\d+")) {
+					year = Integer.valueOf(file.getName());
+				}
+				recurseMeta(file);
+			} else {
+				String fileName = file.getName();
+				if (Pattern.matches(".*.txt", fileName) && fileName.contains("meta")) {
+					JSONParser parser = new JSONParser();
+					JSONArray a = (JSONArray) parser.parse(new FileReader(file));
+					for (Object o : a)
+					  {
+					    JSONObject jsonArticle = (JSONObject) o;
+
+					    String pdfName = (String) jsonArticle.get("pdfName");
+					    String txtFileName = pdfName.replace(".pdf", ".txt");					    
+
+					    String url = (String) jsonArticle.get("url");
+
+					    String authorsStr = (String) jsonArticle.get("authors");
+					    if (authorsStr.contains(":")) {
+					    	authorsStr = authorsStr.substring(0, authorsStr.indexOf(":"));
+					    }
+					    String[] authors = authorsStr.split(",");
+
+					    Article article = library.getArticleByYearAndName(year, txtFileName);
+					    if (article != null) {					    	
+					    	article.setAuthors(authors);
+					    	totalFilesMatchedMeta++;
+					    } else {
+					    	System.err.println(year + " " + txtFileName);
+					    }
+					  }
+				}
+			}
+		}
+	}
+	
+	private void run() throws Exception {
 		File dataDir = new File("../data/");
 		recurseDirectory(dataDir);
+		recurseMeta(dataDir);
+		library.redoMappings();
 				
 		System.out.println("Successfully parsed references: " + refCount + "/" + totalFiles);
 		System.out.println("Successfully parsed title EN: " + titleENCount + "/" + totalFiles);
@@ -360,6 +466,35 @@ def parseAuthors(content):
 		System.out.println("Successfully parsed authors: " + authorCount + "/" + totalFiles);
 		System.out.println("Successfully parsed abstract EN: " + abstractENCount + "/" + totalFiles);
 		System.out.println("Successfully parsed abstract RS: " + abstractRSCount + "/" + totalFiles);
+		System.out.println("Total files matched meta: " + totalFilesMatchedMeta + "/" + totalFiles);
+		
+		
+		System.out.println("Total articles by year:");
+		for (int year = startYear; year <= endYear; year++) {
+			System.out.println(year + ": " + library.getArticlesByYear(year).size());
+		}
+		
+		List<Entry<String, List<Article>>> articles = new ArrayList<Map.Entry<String,List<Article>>>(library.articlesByAuthor.entrySet());
+
+		Collections.sort(articles, new Comparator<Map.Entry<String, List<Article>>>(){
+			@Override
+		    public int compare(Map.Entry<String, List<Article>> o1, Map.Entry<String, List<Article>> o2) {
+		        return o2.getValue().size() - o1.getValue().size();
+		    }
+		});
+		
+		int topAuthorsCount = 50;
+		System.out.println("Top " + topAuthorsCount + " most published authors: ");
+		{
+			int i = 0;
+			for (Entry<String, List<Article>> entry : articles) {
+				if (i >= topAuthorsCount) {
+					break;
+				}
+				System.out.println((i + 1) + ". " + entry.getKey() + " " + entry.getValue().size());
+				i++;
+			}
+		}
 	}
 
 }
