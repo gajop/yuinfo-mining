@@ -5,8 +5,10 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Vector;
 import java.util.regex.Pattern;
 
 import org.apache.commons.io.FileUtils;
@@ -20,6 +22,15 @@ public class PDFParsingMain {
 	int abstractENStartIndx = -1;
 	int abstractENEndIndx = -1;
 	int abstractENAuthorsLength = -1;
+	
+	
+	int refCount = 0;
+	int titleENCount = 0;
+	int titleRSCount = 0;
+	int abstractENCount = 0;
+	int abstractRSCount = 0;
+	int authorCount = 0;
+	int totalFiles = 0;
 	/** python code:
 	 * #!/usr/bin/python
 # -*- coding: utf8 -*- 
@@ -65,7 +76,13 @@ regLatinica = PUT LATIN  CHARS
 	}
 	
 	public String preAbstract(String content) {
-		int preAbstractEndIndx = -1;
+		int preAbstractEndIndx = -1;		int refCount = 0;
+		int titleENCount = 0;
+		int titleRSCount = 0;
+		int abstractENCount = 0;
+		int abstractRSCount = 0;
+		int authorCount = 0;
+		int totalFiles = 0;
 		for (String abstractAuthors : new String[] { "Sadržaj", "Apstrakt", "Садржај" }) {
 			if (content.contains(abstractAuthors)) {
 				preAbstractEndIndx = content.indexOf(abstractAuthors) + abstractAuthors.length();
@@ -222,96 +239,121 @@ def parseAuthors(content):
 	 * @param args
 	 * @throws IOException 
 	 */
-	public static void main(String[] args) throws IOException {
+	public static void main(String[] args) throws Exception {
 		PDFParsingMain pdfParsingMain = new PDFParsingMain();
 		pdfParsingMain.run();
 	}
 	
-	private void run() throws IOException {
-		File dir = new File("../data/");	
-		int refCount = 0;
-		int titleENCount = 0;
-		int titleRSCount = 0;
-		int abstractENCount = 0;
-		int abstractRSCount = 0;
-		int authorCount = 0;
-		int totalFiles = 0;
+	void parseFile(File file) throws IOException {
+		String filePath = file.getAbsolutePath();
+		abstractRSStartIndx = -1;
+		abstractRSEndIndx = -1;
+		abstractRSAuthorsLength = -1;
+		abstractENStartIndx = -1;
+		abstractENEndIndx = -1;
+		abstractENAuthorsLength = -1;
 		
-		for (File file : dir.listFiles()) {			
-			String filePath = file.getAbsolutePath();
+		totalFiles++;
+		System.out.println("Parsing plaintext file: " + filePath);
+		String content = FileUtils.readFileToString(file);
+	//	System.out.println(content);
+
+		String titleEN = null;
+		String titleRS = null;
+		String[] titles = parseTitles(content);
+		titleEN = titles[0];
+		titleRS = titles[1];						
+		
+		String abstracts [] = parseAbstract(content);
+		String abstractEN = abstracts[0];
+		String abstractRS = abstracts[1];
+		
+		String [] authors = parseAuthors(content);
+
+		String[] references = parseReferences(content);
+        if (titleEN != null || titleRS != null) {
+        	System.out.println("Authorss: ");
+            if (titleEN != null) {
+            	titleENCount++;
+                System.out.println("Titles EN: " + titleEN);
+            } 
+        	if (titleRS != null) {
+        		titleRSCount++;
+            	System.out.println("Titles RS: " + titleRS);
+			}
+        }
+        if (abstractEN != null || abstractRS != null) {
+        	System.out.println("Abstracts: ");
+            if (abstractEN != null) {
+            	abstractENCount++;
+                System.out.println("Abstract EN: " + abstractEN);
+            } 
+        	if (abstractRS != null) {
+        		abstractRSCount++;
+            	System.out.println("Abstract RS: " + abstractRS);
+			}
+        }
+        if (authors.length > 0) {
+        	System.out.print("Authors: ");
+        	authorCount++;
+            for (String author : authors) {
+            	System.out.print(author + ", ");
+            }
+            System.out.println();
+        }
+        if (references.length > 0) {
+	        System.out.println("References: ");
+	        for (int i = 0; i < references.length; i++) {
+	        	String ref = references[i];
+	        	System.out.println((i+1) + "." + ref);
+	        }
+        	refCount++;
+        }
+     //   if (true) break;
+	}
+	
+	private void recurseDirectory(File dir) throws IOException, InterruptedException {
+		File[] files = dir.listFiles();
+		Vector<String> fileNames = new Vector<String>();
+		//populate list of .pdf files that have been transformed to .txt files
+		for (File file : files) {
 			String fileName = file.getName();
-			if (Pattern.matches(".*.txt", fileName)) {				
-				abstractRSStartIndx = -1;
-				abstractRSEndIndx = -1;
-				abstractRSAuthorsLength = -1;
-				abstractENStartIndx = -1;
-				abstractENEndIndx = -1;
-				abstractENAuthorsLength = -1;
-				
-				totalFiles++;
-				if (totalFiles >= 100) {
-					break;
-				}
-				System.out.println("Parsing plaintext file: " + filePath);
-				String content = FileUtils.readFileToString(file);
-			//	System.out.println(content);
-
-				String titleEN = null;
-				String titleRS = null;
-				String[] titles = parseTitles(content);
-				titleEN = titles[0];
-				titleRS = titles[1];
-			//	if (true) continue;
-								
-				
-				String abstracts [] = parseAbstract(content);
-				String abstractEN = abstracts[0];
-				String abstractRS = abstracts[1];
-				
-				String [] authors = parseAuthors(content);
-
-				String[] references = parseReferences(content);
-		        if (titleEN != null || titleRS != null) {
-		        	System.out.println("Authorss: ");
-		            if (titleEN != null) {
-		            	titleENCount++;
-		                System.out.println("Titles EN: " + titleEN);
-		            } 
-		        	if (titleRS != null) {
-		        		titleRSCount++;
-		            	System.out.println("Titles RS: " + titleRS);
-					}
-		        }
-		        if (abstractEN != null || abstractRS != null) {
-		        	System.out.println("Abstracts: ");
-		            if (abstractEN != null) {
-		            	abstractENCount++;
-		                System.out.println("Abstract EN: " + abstractEN);
-		            } 
-		        	if (abstractRS != null) {
-		        		abstractRSCount++;
-		            	System.out.println("Abstract RS: " + abstractRS);
-					}
-		        }
-		        if (authors.length > 0) {
-		        	System.out.print("Authors: ");
-		        	authorCount++;
-		            for (String author : authors) {
-		            	System.out.print(author + ", ");
-		            }
-		            System.out.println();
-		        }
-		        if (references.length > 0) {
-			        System.out.println("References: ");
-			        for (int i = 0; i < references.length; i++) {
-			        	String ref = references[i];
-			        	System.out.println((i+1) + "." + ref);
-			        }
-		        	refCount++;
-		        }
-		     //   if (true) break;
+			if (Pattern.matches(".*.txt", fileName) && !fileName.contains("meta")) {				
+				fileNames.add(fileName);
 			}
 		}
+		for (File file : files) {	
+			if (file.isDirectory()) {
+				recurseDirectory(file);
+			} else {
+				String fileName = file.getName();
+				if (Pattern.matches(".*.txt", fileName) && !fileName.contains("meta")) {
+					parseFile(file);
+				}
+				if (Pattern.matches(".*.pdf", fileName)) {
+					String txtFilePath = fileName.replace(".pdf", ".txt");
+					if (!fileNames.contains(txtFilePath)) {
+						System.out.println("PDF doesn't exist: " + fileName);
+						String filePath = file.getAbsolutePath();
+						Process process = Runtime.getRuntime().exec("pdftotext " + filePath);
+						process.waitFor();
+						String newFilePath = dir.getAbsolutePath() + File.separator + txtFilePath;
+						File newFile = new File(newFilePath);
+						if (newFile.exists()) {
+							parseFile(newFile);
+						} else {
+							System.err.println("Newly created file doesn't exist: " + newFilePath);
+						}
+					}					
+				}
+			}
+		}
+	}
+	
+	private void run() throws IOException, InterruptedException {
+		File dataDir = new File("../data/");
+		recurseDirectory(dataDir);
+				
 		System.out.println("Successfully parsed references: " + refCount + "/" + totalFiles);
 		System.out.println("Successfully parsed title EN: " + titleENCount + "/" + totalFiles);
 		System.out.println("Successfully parsed title RS: " + titleRSCount + "/" + totalFiles);

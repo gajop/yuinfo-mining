@@ -20,7 +20,7 @@ from bs4 import BeautifulSoup
 DATA_DIR = os.path.realpath(SCRIPT_DIR + "/../data") + "/"
 
 br = mechanize.Browser()
-br.set_proxies({"http": "proxy.uns.ac.rs:8080", })
+#br.set_proxies({"http": "proxy.uns.ac.rs:8080", })
 
 def makeDirs():
     if not os.path.exists(DATA_DIR):
