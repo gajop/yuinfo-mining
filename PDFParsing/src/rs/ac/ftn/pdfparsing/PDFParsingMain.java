@@ -340,7 +340,7 @@ def parseAuthors(content):
         	System.out.println(content);
         	System.err.println("Failed to parse " + ((abstractEN == null)?"English abstract ":"") + 
         			((abstractRS == null)?"Serbian abstract ":""));
-        	throw new Error("abstract parsing error " + filePath); 
+        	//throw new Error("abstract parsing error " + filePath); 
         }
         if (authors.length > 0) {
         	System.out.print("Authors: ");
