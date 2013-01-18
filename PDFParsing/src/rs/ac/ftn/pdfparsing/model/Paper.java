@@ -1,7 +1,7 @@
 package rs.ac.ftn.pdfparsing.model;
 
-public class Article {
-	String[] authors;
+public class Paper {
+	Author[] authors;
 	String titleEN;
 	String titleRS;
 	String abstractEN;
@@ -11,7 +11,7 @@ public class Article {
 	String fileName;
 	
 	
-	public Article(String[] authors, String titleEN, String titleRS,
+	public Paper(Author[] authors, String titleEN, String titleRS,
 			String abstractEN, String abstractRS, int year, String topic,
 			String fileName) {
 		super();
@@ -45,10 +45,10 @@ public class Article {
 	public void setTopic(String topic) {
 		this.topic = topic;
 	}
-	public String[] getAuthors() {
+	public Author[] getAuthors() {
 		return authors;
 	}
-	public void setAuthors(String[] authors) {
+	public void setAuthors(Author[] authors) {
 		this.authors = authors;
 	}
 	public String getTitleEN() {

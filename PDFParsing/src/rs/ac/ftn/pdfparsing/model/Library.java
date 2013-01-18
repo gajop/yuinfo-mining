@@ -2,94 +2,110 @@ package rs.ac.ftn.pdfparsing.model;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 
 public class Library {
-	List<Article> articles = new LinkedList<Article>();
+	List<Paper> papers = new LinkedList<Paper>();
 
-	public HashMap<Integer, List<Article>> articlesByYear = new HashMap<Integer, List<Article>>();
-	public HashMap<String, List<Article>> articlesByTopic = new HashMap<String, List<Article>>();
-	public HashMap<String, List<Article>> articlesByAuthor = new HashMap<String, List<Article>>();
-	public HashMap<Integer, HashMap<String, Article>> articlesByYearAndName = new HashMap<Integer, HashMap<String, Article>>();
+	public HashMap<Integer, List<Paper>> papersByYear = new HashMap<Integer, List<Paper>>();
+	public HashMap<String, List<Paper>> papersByTopic = new HashMap<String, List<Paper>>();
+	public HashMap<String, List<Paper>> papersByAuthor = new HashMap<String, List<Paper>>();
+	public HashMap<Integer, HashMap<String, Paper>> papersByYearAndName = new HashMap<Integer, HashMap<String, Paper>>();
+	
+	public Set<Author> authors = new HashSet<Author>(); 
+	public HashMap<String, Author> authorsByFullName = new HashMap<String, Author>();
 	static Library instance = new Library();
 	
 	public static Library getInstance() {
 		return instance;
 	}
 	
-	public void addArticle(Article article) {
-		articles.add(article);
-		List<Article> articlesByYearList;
-		HashMap<String, Article> articlesByYearMap;
-		if (articlesByYear.containsKey(article.getYear())) {					
-			articlesByYearList = articlesByYear.get(article.getYear());	
-			articlesByYearMap = articlesByYearAndName.get(article.getYear());
+	public void addArticle(Paper paper) {
+		papers.add(paper);
+		List<Paper> papersByYearList;
+		HashMap<String, Paper> papersByYearMap;
+		if (papersByYear.containsKey(paper.getYear())) {					
+			papersByYearList = papersByYear.get(paper.getYear());	
+			papersByYearMap = papersByYearAndName.get(paper.getYear());
 		} else {			
-			articlesByYearList = new LinkedList<Article>();			
-			articlesByYear.put(article.getYear(), articlesByYearList);
+			papersByYearList = new LinkedList<Paper>();			
+			papersByYear.put(paper.getYear(), papersByYearList);
 			
-			articlesByYearMap = new HashMap<String, Article>();			
-			articlesByYearAndName.put(article.getYear(), articlesByYearMap);
+			papersByYearMap = new HashMap<String, Paper>();			
+			papersByYearAndName.put(paper.getYear(), papersByYearMap);
 		}
-		articlesByYearList.add(article);
-		articlesByYearMap.put(article.getFileName(), article);
+		papersByYearList.add(paper);
+		papersByYearMap.put(paper.getFileName(), paper);
 
-		List<Article> articlesByTopicList;
-		if (articlesByTopic.containsKey(article.getTopic())) {					
-			articlesByTopicList = articlesByTopic.get(article.getTopic());			
+		List<Paper> papersByTopicList;
+		if (papersByTopic.containsKey(paper.getTopic())) {					
+			papersByTopicList = papersByTopic.get(paper.getTopic());			
 		} else {
-			articlesByTopicList = new LinkedList<Article>();
-			articlesByTopic.put(article.getTopic(), articlesByTopicList);			
+			papersByTopicList = new LinkedList<Paper>();
+			papersByTopic.put(paper.getTopic(), papersByTopicList);			
 		}
-		articlesByTopicList.add(article);
-				
-		for (String author : article.getAuthors()) {
-			List<Article> articlesByAuthorList;
-			if (articlesByAuthor.containsKey(author)) {					
-				articlesByAuthorList = articlesByAuthor.get(author);			
+		papersByTopicList.add(paper);
+		
+		for (Author author : paper.getAuthors()) {
+			List<Paper> papersByAuthorList;
+			if (papersByAuthor.containsKey(author.getFullName())) {					
+				papersByAuthorList = papersByAuthor.get(author.getFullName());			
 			} else {
-				articlesByAuthorList = new LinkedList<Article>();
-				articlesByAuthor.put(author, articlesByAuthorList);			
+				papersByAuthorList = new LinkedList<Paper>();
+				papersByAuthor.put(author.getFullName(), papersByAuthorList);			
 			}
-			articlesByAuthorList.add(article);
-		}		
+			papersByAuthorList.add(paper);
+		} 
+		
+		for (Author author : paper.getAuthors()) {
+			if (!authors.contains(author)) {
+				authors.add(author);
+				authorsByFullName.put(author.getFullName(), author);
+			}
+		}
 	}
 	
 	public void redoMappings() {
-		List<Article> oldArticles = new ArrayList<Article>(articles);
-		articles.clear();
-		articlesByYear.clear();
-		articlesByTopic.clear();
-		articlesByAuthor.clear();
-		articlesByYearAndName.clear();
+		List<Paper> oldArticles = new ArrayList<Paper>(papers);
+		papers.clear();
+		papersByYear.clear();
+		papersByTopic.clear();
+		papersByAuthor.clear();
+		papersByYearAndName.clear();
 				
-		for (Article article : oldArticles) {
-			addArticle(article);
+		for (Paper paper : oldArticles) {
+			addArticle(paper);
 		}
 	}
 	
-	public List<Article> getArticles() {
-		return articles;
+	public List<Paper> getArticles() {
+		return papers;
 	}
 	
-	public List<Article> getArticlesByTopic(String topic) {
-		return articlesByTopic.get(topic);
+	public List<Paper> getArticlesByTopic(String topic) {
+		return papersByTopic.get(topic);
 	}
 	
-	public List<Article> getArticlesByYear(int year) {
-		return articlesByYear.get(year);
+	public List<Paper> getArticlesByYear(int year) {
+		return papersByYear.get(year);
 	}
 	
-	public List<Article> getArticlesByAuthor(String author) {
-		return articlesByAuthor.get(author);
+	public List<Paper> getArticlesByAuthor(String author) {
+		return papersByAuthor.get(author);
 	}
 	
-	public Article getArticleByYearAndName(int year, String name) {
-		if (articlesByYearAndName.get(year) == null) { 			
+	public Paper getArticleByYearAndName(int year, String name) {
+		if (papersByYearAndName.get(year) == null) { 			
 			return null;
 		}
-		System.out.println(articlesByYearAndName.get(year).size());
-		return articlesByYearAndName.get(year).get(name);
+		System.out.println(papersByYearAndName.get(year).size());
+		return papersByYearAndName.get(year).get(name);
+	}
+	
+	public Author getAuthorByFullName(String fullName) {
+		return authorsByFullName.get(fullName);
 	}
 }

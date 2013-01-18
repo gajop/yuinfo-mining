@@ -25,7 +25,8 @@ import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 
-import rs.ac.ftn.pdfparsing.model.Article;
+import rs.ac.ftn.pdfparsing.model.Author;
+import rs.ac.ftn.pdfparsing.model.Paper;
 import rs.ac.ftn.pdfparsing.model.Library;
 
 public class PDFParsingMain {
@@ -286,7 +287,7 @@ def parseAuthors(content):
 		pdfParsingMain.run();
 	}
 	
-	Article parseFile(File file) throws IOException {
+	Paper parseFile(File file) throws IOException {
 		String filePath = file.getAbsolutePath();
 		abstractRSStartIndx = -1;
 		abstractRSEndIndx = -1;
@@ -310,7 +311,7 @@ def parseAuthors(content):
 		String abstractEN = abstracts[0];
 		String abstractRS = abstracts[1];
 		
-		String [] authors = parseAuthors(content);
+		String [] authorFullNames = parseAuthors(content);
 
 		String[] references = parseReferences(content);
         if (titleEN != null || titleRS != null) {
@@ -342,10 +343,10 @@ def parseAuthors(content):
         			((abstractRS == null)?"Serbian abstract ":""));
         	//throw new Error("abstract parsing error " + filePath); 
         }
-        if (authors.length > 0) {
+        if (authorFullNames.length > 0) {
         	System.out.print("Authors: ");
         	authorCount++;
-            for (String author : authors) {
+            for (String author : authorFullNames) {
             	System.out.print(author + ", ");
             }
             System.out.println();
@@ -358,9 +359,22 @@ def parseAuthors(content):
 	        }
         	refCount++;
         }
-        Article article = new Article(authors, titleEN, titleRS, abstractEN, abstractRS, year, topic, file.getName());
-        library.addArticle(article);
-        return article;
+        
+        Author[] authors = new Author[authorFullNames.length];
+        {
+        	int i = 0;
+	        
+	        for (String authorFullName: authorFullNames) {
+	        	Author author = library.getAuthorByFullName(authorFullName);
+	        	if (author == null) {
+	        		author = new Author(authorFullName);
+	        	}
+	        	authors[i++] = author;
+	        }
+        }
+        Paper paper = new Paper(authors, titleEN, titleRS, abstractEN, abstractRS, year, topic, file.getName());
+        library.addArticle(paper);
+        return paper;
      //   if (true) break;
 	}
 	
@@ -439,11 +453,23 @@ def parseAuthors(content):
 					    if (authorsStr.contains(":")) {
 					    	authorsStr = authorsStr.substring(0, authorsStr.indexOf(":"));
 					    }
-					    String[] authors = authorsStr.split(",");
+					    String[] authorFullNames = authorsStr.split(",");
+				        Author[] authors = new Author[authorFullNames.length];
+				        {
+				        	int i = 0;
+					        
+					        for (String authorFullName: authorFullNames) {
+					        	Author author = library.getAuthorByFullName(authorFullName);
+					        	if (author == null) {
+					        		author = new Author(authorFullName);
+					        	}
+					        	authors[i++] = author;
+					        }
+				        }
 
-					    Article article = library.getArticleByYearAndName(year, txtFileName);
-					    if (article != null) {					    	
-					    	article.setAuthors(authors);
+					    Paper paper = library.getArticleByYearAndName(year, txtFileName);
+					    if (paper != null) {					    	
+					    	paper.setAuthors(authors);
 					    	totalFilesMatchedMeta++;
 					    } else {
 					    	System.err.println(year + " " + txtFileName);
@@ -469,16 +495,16 @@ def parseAuthors(content):
 		System.out.println("Total files matched meta: " + totalFilesMatchedMeta + "/" + totalFiles);
 		
 		
-		System.out.println("Total articles by year:");
+		System.out.println("Total papers by year:");
 		for (int year = startYear; year <= endYear; year++) {
 			System.out.println(year + ": " + library.getArticlesByYear(year).size());
 		}
 		
-		List<Entry<String, List<Article>>> articles = new ArrayList<Map.Entry<String,List<Article>>>(library.articlesByAuthor.entrySet());
+		List<Entry<String, List<Paper>>> papers = new ArrayList<Map.Entry<String,List<Paper>>>(library.papersByAuthor.entrySet());
 
-		Collections.sort(articles, new Comparator<Map.Entry<String, List<Article>>>(){
+		Collections.sort(papers, new Comparator<Map.Entry<String, List<Paper>>>(){
 			@Override
-		    public int compare(Map.Entry<String, List<Article>> o1, Map.Entry<String, List<Article>> o2) {
+		    public int compare(Map.Entry<String, List<Paper>> o1, Map.Entry<String, List<Paper>> o2) {
 		        return o2.getValue().size() - o1.getValue().size();
 		    }
 		});
@@ -487,7 +513,7 @@ def parseAuthors(content):
 		System.out.println("Top " + topAuthorsCount + " most published authors: ");
 		{
 			int i = 0;
-			for (Entry<String, List<Article>> entry : articles) {
+			for (Entry<String, List<Paper>> entry : papers) {
 				if (i >= topAuthorsCount) {
 					break;
 				}
