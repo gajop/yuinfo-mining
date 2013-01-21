@@ -39,7 +39,7 @@ public class CroSerUtils {
 	
 	public static RAMDirectory directory;
 	
-	public static String dictionaryPath;
+	public static String dictionaryPath = "metadata/";
 
     public static String translateFromCroationToSerbian(String term){
 		String retVal = term;

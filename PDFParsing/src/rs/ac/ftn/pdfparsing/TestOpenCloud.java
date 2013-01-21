@@ -30,13 +30,14 @@ public class TestOpenCloud {
     public void show(Cloud cloud) {
         frame = new JFrame(TestOpenCloud.class.getSimpleName());
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        panel = new JPanel();
-        panel.setBackground(new Color(255, 255, 255));
+        panel = new JPanel();        
+        panel.setBackground(Color.lightGray);
         Random random = new Random();
         for (Tag tag : cloud.tags()) {
             final JLabel label = new JLabel(tag.getName());
             label.setOpaque(false);
-            label.setFont(label.getFont().deriveFont((float) tag.getWeight() * 10));
+            label.setFont(label.getFont().deriveFont((float) tag.getWeight() * 20));
+            label.setForeground(Color.BLACK);
             panel.add(label);
         }
         frame.add(panel);
@@ -47,12 +48,12 @@ public class TestOpenCloud {
         
     }    
 
-    public void saveImage() {
+    public void saveImage(String fileName) {
 	    BufferedImage bi = new BufferedImage(panel.getSize().width, panel.getSize().height, BufferedImage.TYPE_INT_ARGB); 
 	    Graphics g = bi.createGraphics();
 	    panel.paint(g);  //this == JComponent
 	    g.dispose();
-	    try{ImageIO.write(bi,"png",new File("test.png"));}catch (Exception e) {}
+	    try{ImageIO.write(bi,"png",new File(fileName));}catch (Exception e) {}
 	    frame.setVisible(false);
     }
 }

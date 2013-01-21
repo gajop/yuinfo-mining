@@ -24,6 +24,12 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.lucene.analysis.LowerCaseFilter;
+import org.apache.lucene.analysis.StopFilter;
+import org.apache.lucene.analysis.Token;
+import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.WhitespaceTokenizer;
+import org.apache.lucene.analysis.snowball.SnowballFilter;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexReader;
@@ -43,6 +49,11 @@ import rs.ac.ftn.pdfparsing.model.Paper;
 import rs.ac.ftn.pdfparsing.model.Library;
 import rs.ac.ftn.pdfparsing.util.LevenshteinDistance;
 import rs.ac.uns.ftn.informatika.bibliography.textsrv.CrisAnalyzer;
+import rs.ac.uns.ftn.informatika.bibliography.textsrv.CroSerTranslateFilter;
+import rs.ac.uns.ftn.informatika.bibliography.textsrv.LatCyrFilter;
+import rs.ac.uns.ftn.informatika.bibliography.textsrv.RemoveAccentsFilter;
+import rs.ac.uns.ftn.informatika.bibliography.textsrv.SerbianStemmer;
+import rs.ac.uns.ftn.informatika.bibliography.utils.CroSerUtils;
 import rs.ac.uns.ftn.informatika.bibliography.utils.LatCyrUtils;
 
 public class PDFParsingMain {
@@ -213,7 +224,7 @@ regLatinica = PUT LATIN  CHARS
 		return authors.toArray(new String[authors.size()]);
 	}
 	
-	public String [] parseAbstract(String content) {
+	public String [] parseAbstract(String content) throws IOException {
 		String abstractRS = null;
 		String abstractEN = null;
 
@@ -284,18 +295,24 @@ regLatinica = PUT LATIN  CHARS
 				int indx = 0;
 				boolean found = false;
 				for (String line : abstractContent.split("\n")) {
-					if (line.matches("[\\d\\sA-ZČĆŠĐŽ\\p{Punct}]*")) {						
+					if (line.matches("[\\dI]*\\.?\\s*([A-ZČĆŠĐŽ\\p{Punct}0-9][a-zčćšđž]*\\s?)+") ||
+							line.matches("Ključne re.*") || line.startsWith("Index Terms") ||
+							line.trim().equals("") && indx != 0) {						
 						//System.out.println("MATCH: " + line);
 						found = true;
 						break;
 					}
 					indx = indx + line.length() + 1;
 				}
+				//System.out.println("Abstract size: " + indx);				
 				if (found) {
 					if (i == 0) {
 						abstractRS = abstractRS.substring(0, indx);
+						
 					} else {
 						abstractEN = abstractEN.substring(0, indx);
+					
+						//if (indx > 1000) { System.out.println(abstractEN); System.in.read(); }
 					}
 				}
 			}
@@ -674,12 +691,9 @@ def parseAuthors(content):
 		}
 	}
 	
-	private void parsePapersForKeywords() throws Exception {
-		CrisAnalyzer crisAnalyzer = new CrisAnalyzer();
-		Directory index = new RAMDirectory(); 
-		IndexWriter w = new IndexWriter(index, crisAnalyzer);
-		
-		String topicOfInterest = "ai";
+	private void parsePapersForKeywords(String topicOfInterest, String language) throws Exception {
+		CrisAnalyzer crisAnalyzer = new CrisAnalyzer();		
+
 		HashMap<String, KeywordStats> topicStats = new HashMap<String, KeywordStats>();				
 		for (Paper paper : library.getPapers()) {
 			KeywordStats ks;
@@ -689,15 +703,32 @@ def parseAuthors(content):
 				ks = new KeywordStats();
 				topicStats.put(paper.getTopic(), ks);
 			}
-
-			String abstractContent = paper.getAbstractRS();
+			String abstractContent;
+			if (language.equals("EN")) {
+				abstractContent = paper.getAbstractEN();
+			} else if (language.equals("RS")) {
+				abstractContent = paper.getAbstractRS();
+			} else {
+				throw new Exception("Unsupported language");
+			}
+										
 			if (abstractContent != null) {
-				for (String word : new HashSet<String>(Arrays.asList(abstractContent.split("\\s+")))) {
+				TokenStream ts;
+				if (language.equals("EN")) {
+					ts = crisAnalyzer.tokenStream("abstract_ENG", new StringReader(abstractContent));
+				} else if (language.equals("RS")) {
+					ts = crisAnalyzer.tokenStream("abstract_SRP", new StringReader(abstractContent));
+				} else {			
+					throw new Exception("Unsupported language");
+				}
+				/*for (String word : new HashSet<String>(Arrays.asList(abstractContent.split("\\s+")))) {
+					ks.addWordOccurance(word.toLowerCase());
+				}*/
+				Token token;
+				while ((token = ts.next()) != null) {
+					String word = token.term();
 					ks.addWordOccurance(word.toLowerCase());
 				}
-				Document doc = new Document();
-				doc.add(new Field("abstract", abstractContent, Field.Store.YES, Field.Index.ANALYZED));
-				w.addDocument(doc);
 			}
 		}
 		
@@ -769,10 +800,7 @@ def parseAuthors(content):
 		}
 		TestOpenCloud toc = new TestOpenCloud();
 		toc.show(cloud);
-		toc.saveImage();
-		w.close();
-		//org.apache.lucene.index.IndexReader ir = new IndexReader;
-		//TokenStream stream = crisAnalyzer.tokenStream("abstract", new StringReader(s))
+		toc.saveImage(topicOfInterest + "-" + language + ".png");
 	}
 	
 	private void showAuthorsByPublishedPapers() {
@@ -827,6 +855,7 @@ def parseAuthors(content):
 	}
 	
 	private void run() throws Exception {
+		CroSerUtils.loadStemDictionary();
 		populateSameTopics();
 		File dataDir = new File("../data/");
 		recurseDirectory(dataDir);		
@@ -860,7 +889,13 @@ def parseAuthors(content):
 		}
 		
 		showAuthorsByPublishedPapers();
-		parsePapersForKeywords();
+		
+		for (String topic : Library.getInstance().papersByTopic.keySet()) {
+			for (String lang : new String[] { "EN", "RS"} ) {
+				parsePapersForKeywords(topic, lang);
+			}
+		}
+		System.exit(0);
 	}
 
 }
