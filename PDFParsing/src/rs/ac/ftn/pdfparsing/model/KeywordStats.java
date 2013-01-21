@@ -3,14 +3,9 @@ package rs.ac.ftn.pdfparsing.model;
 import java.util.HashMap;
 
 public class KeywordStats {
-	private static KeywordStats instance = new KeywordStats();
 	HashMap<String, Integer> wordOccuranceMap = new HashMap<String, Integer>();
 	
-	
-	public static KeywordStats getInstance() {
-		return instance;
-	}
-	private KeywordStats() {		
+	public KeywordStats() {		
 	}
 	
 	public void addWordOccurance(String word) {

@@ -40,7 +40,8 @@ public class CrisAnalyzer extends Analyzer {
 		"mozes", "moze", "mozemo", "mozete",
 		
 		//gajop added
-		"se", "na", "za", "da", "sa", "od", "ili", "koji", "kao", "po",
+		"se", "na", "za", "da", "sa", "od", "ili", "koji", "kao", "po", "što", "koje", "kako", "koja",
+		"iz", "uz", "tako", "pri", "do", "ovaj", "ovom",
 	};
 	public static final String[] ENGLISH_STOP_WORDS ={
 	    "a", "an", "and", "are","as","at","be", "but",
@@ -50,7 +51,7 @@ public class CrisAnalyzer extends Analyzer {
 	    "they", "this", "to", "was", "will", "with",
 	
 	    //gajop added
-	    "which", "from", "can", "has", "we", "one", "its", "all", "also", "most",
+	    "which", "from", "can", "has", "we", "one", "its", "all", "also", "most", "some",
 	};
 	
 	/**
