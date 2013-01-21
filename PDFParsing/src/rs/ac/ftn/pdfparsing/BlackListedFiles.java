@@ -2,6 +2,7 @@ package rs.ac.ftn.pdfparsing;
 
 import java.io.File;
 import java.util.HashMap;
+import java.util.regex.Pattern;
 
 public class BlackListedFiles {	
 	static BlackListedFiles instance = null;
@@ -131,7 +132,7 @@ public class BlackListedFiles {
 	}
 	
 	private String getRelativeFilePath(String absoluteFilePath) {
-		return absoluteFilePath.split("data/")[1];
+		return absoluteFilePath.split(Pattern.quote("data" + File.separator))[1];
 	}
 	
 	public boolean isBlackListed(String filePath) {

@@ -23,7 +23,7 @@ public class CrisAnalyzer extends Analyzer {
 
 	private Set<String> serbianStopSet;
 	private Set<String> englishStopSet;
-	private static final String[] SERBIAN_STOP_WORDS = {
+	public static final String[] SERBIAN_STOP_WORDS = {
 		"biti", "ne", 
 		"jesam", "sam", "jesi", "si", "je", "jesmo", "smo", "jeste", "ste", "jesu", "su",
 		"nijesam", "nisam", "nijesi", "nisi", "nije", "nijesmo", "nismo", "nijeste", "niste", "nijesu", "nisu",
@@ -37,13 +37,21 @@ public class CrisAnalyzer extends Analyzer {
 		"cu", "ces", "ce", "cemo", "cete",
 		"necu", "neces", "nece", "necemo", "necete",
 		"mogu", "možeš", "može", "možemo", "možete",
-		"mozes", "moze", "mozemo", "mozete"};
-	private static final String[] ENGLISH_STOP_WORDS ={
+		"mozes", "moze", "mozemo", "mozete",
+		
+		//gajop added
+		"se", "na", "za", "da", "sa", "od", "ili", "koji", "kao", "po",
+	};
+	public static final String[] ENGLISH_STOP_WORDS ={
 	    "a", "an", "and", "are","as","at","be", "but",
 	    "by", "for", "if", "in", "into", "is", "it",
 	    "no", "not", "of", "on", "or", "s", "such",
 	    "that", "the", "their", "then", "there","these",
-	    "they", "this", "to", "was", "will", "with" };
+	    "they", "this", "to", "was", "will", "with",
+	
+	    //gajop added
+	    "which", "from", "can", "has", "we", "one", "its", "all", "also", "most",
+	};
 	
 	/**
 	 * 

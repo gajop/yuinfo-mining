@@ -23,7 +23,7 @@ public class Library {
 		return instance;
 	}
 	
-	public void addArticle(Paper paper) {
+	public void addPaper(Paper paper) {
 		papers.add(paper);
 		List<Paper> papersByYearList;
 		HashMap<String, Paper> papersByYearMap;
@@ -69,39 +69,38 @@ public class Library {
 	}
 	
 	public void redoMappings() {
-		List<Paper> oldArticles = new ArrayList<Paper>(papers);
+		List<Paper> oldPapers = new ArrayList<Paper>(papers);
 		papers.clear();
 		papersByYear.clear();
 		papersByTopic.clear();
 		papersByAuthor.clear();
 		papersByYearAndName.clear();
 				
-		for (Paper paper : oldArticles) {
-			addArticle(paper);
+		for (Paper paper : oldPapers) {
+			addPaper(paper);
 		}
 	}
 	
-	public List<Paper> getArticles() {
+	public List<Paper> getPapers() {
 		return papers;
 	}
 	
-	public List<Paper> getArticlesByTopic(String topic) {
+	public List<Paper> getPapersByTopic(String topic) {
 		return papersByTopic.get(topic);
 	}
 	
-	public List<Paper> getArticlesByYear(int year) {
+	public List<Paper> getPapersByYear(int year) {
 		return papersByYear.get(year);
 	}
 	
-	public List<Paper> getArticlesByAuthor(String author) {
+	public List<Paper> getPapersByAuthor(String author) {
 		return papersByAuthor.get(author);
 	}
 	
-	public Paper getArticleByYearAndName(int year, String name) {
+	public Paper getPaperByYearAndName(int year, String name) {
 		if (papersByYearAndName.get(year) == null) { 			
 			return null;
 		}
-		System.out.println(papersByYearAndName.get(year).size());
 		return papersByYearAndName.get(year).get(name);
 	}
 	

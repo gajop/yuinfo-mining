@@ -1,5 +1,7 @@
 package rs.ac.ftn.pdfparsing.model;
 
+import java.util.Arrays;
+
 public class Paper {
 	Author[] authors;
 	String titleEN;
@@ -9,11 +11,12 @@ public class Paper {
 	int year;
 	String topic;
 	String fileName;
+	String content;
 	
 	
 	public Paper(Author[] authors, String titleEN, String titleRS,
 			String abstractEN, String abstractRS, int year, String topic,
-			String fileName) {
+			String fileName, String content) {
 		super();
 		this.authors = authors;
 		this.titleEN = titleEN;
@@ -23,8 +26,23 @@ public class Paper {
 		this.year = year;
 		this.topic = topic;
 		this.fileName = fileName;
+		this.content = content;
 	}
 	
+	
+	
+	public String getContent() {
+		return content;
+	}
+
+
+
+	public void setContent(String content) {
+		this.content = content;
+	}
+
+
+
 	public String getFileName() {
 		return fileName;
 	}
@@ -74,6 +92,17 @@ public class Paper {
 	}
 	public void setAbstractRS(String abstractRS) {
 		this.abstractRS = abstractRS;
+	}
+
+
+
+	@Override
+	public String toString() {
+		return "Paper [authors=" + Arrays.toString(authors) + ", titleEN="
+				+ titleEN + ", titleRS=" + titleRS + ", abstractEN="
+				+ abstractEN + ", abstractRS=" + abstractRS + ", year=" + year
+				+ ", topic=" + topic + ", fileName=" + fileName + ", content="
+				+ content + "]";
 	}	
 	
 }
