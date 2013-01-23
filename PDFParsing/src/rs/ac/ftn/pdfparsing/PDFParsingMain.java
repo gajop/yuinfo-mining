@@ -63,8 +63,11 @@ public class PDFParsingMain {
 		{ "sw", "software" },
 		{ "is", "infosys" },
 		{ "pi", "applied" },
-		{ "rs", "simulation" },
+		{ "rs", "ai" },
 		{ "rmit", "networks" },
+		{ "esoc", "internet" },
+		{ "simulation", "ai" },
+		
 	};
     Map<String, String> sameTopicMap = new HashMap<String, String>();
 	
@@ -691,10 +694,12 @@ def parseAuthors(content):
 		}
 	}
 	
-	private void parsePapersForKeywords(String topicOfInterest, String language) throws Exception {
+	//ok this is ugly now: FIXME: year is -1 if year check is done, if it's not -1 then we don't check the topicOfInterest...
+	private void parsePapersForKeywords(String topicOfInterest, String language, int year) throws Exception {
 		CrisAnalyzer crisAnalyzer = new CrisAnalyzer();		
 
-		HashMap<String, KeywordStats> topicStats = new HashMap<String, KeywordStats>();				
+		HashMap<String, KeywordStats> topicStats = new HashMap<String, KeywordStats>();
+		HashMap<Integer, KeywordStats> yearStats = new HashMap<Integer, KeywordStats>();	
 		for (Paper paper : library.getPapers()) {
 			KeywordStats ks;
 			if (topicStats.containsKey(paper.getTopic())) {
@@ -702,6 +707,13 @@ def parseAuthors(content):
 			} else {
 				ks = new KeywordStats();
 				topicStats.put(paper.getTopic(), ks);
+			}
+			KeywordStats ksYear;
+			if (yearStats.containsKey(paper.getYear())) {
+				ksYear = yearStats.get(paper.getYear());
+			} else {
+				ksYear = new KeywordStats();
+				yearStats.put(paper.getYear(), ksYear);
 			}
 			String abstractContent;
 			if (language.equals("EN")) {
@@ -728,11 +740,16 @@ def parseAuthors(content):
 				while ((token = ts.next()) != null) {
 					String word = token.term();
 					ks.addWordOccurance(word.toLowerCase());
+					ksYear.addWordOccurance(word.toLowerCase());
 				}
 			}
 		}
-		
-		KeywordStats ks = topicStats.get(topicOfInterest);
+		KeywordStats ks;
+		if (year == -1) {
+			ks = topicStats.get(topicOfInterest);
+		} else {
+			ks = yearStats.get(year);
+		}
 		List<Entry<String, Integer>> wordOccurances = new ArrayList<Map.Entry<String,Integer>>(ks.getWordOccuranceMap().entrySet());
 
 		Collections.sort(wordOccurances, new Comparator<Map.Entry<String, Integer>>(){
@@ -759,23 +776,42 @@ def parseAuthors(content):
 					}
 					if (isStopWord) {
 						break;
-					}
+					}					
+				}
+				try {
+					Integer.valueOf(word);
+					isStopWord = true;
+				} catch (Exception ex) {						
 				}
 				if (isStopWord || word.length() < 2) {
 					continue;
 				}
 
 				double occurInTopicCount = 0;
-				for (Entry<String, KeywordStats> ksEntry : topicStats.entrySet()) {				
-					Integer value = ksEntry.getValue().getWordOccuranceMap().get(word);
-					if (value != null) {
-						occurInTopicCount++;
-					}				
+				if (year == -1) {
+					for (Entry<String, KeywordStats> ksEntry : topicStats.entrySet()) {				
+						Integer value = ksEntry.getValue().getWordOccuranceMap().get(word);
+						if (value != null) {
+							occurInTopicCount++;
+						}				
+					}
+				} else {
+					for (Entry<Integer, KeywordStats> ksEntry : yearStats.entrySet()) {				
+						Integer value = ksEntry.getValue().getWordOccuranceMap().get(word);
+						if (value != null) {
+							occurInTopicCount++;
+						}				
+					}
 				}
-				double idf = Math.log(topicStats.size() / occurInTopicCount);
+				double idf;
+				if (year == -1) {
+					idf = Math.log(topicStats.size() / occurInTopicCount);
+				} else {
+					idf = Math.log(yearStats.size() / occurInTopicCount);
+				}
 				double value = entry.getValue() * idf;
 				Tag tag = new Tag(entry.getKey(), value);
-				tags.add(tag);				
+				tags.add(tag);
 			}
 		}
 
@@ -785,8 +821,8 @@ def parseAuthors(content):
 				return o2.getScoreInt() - o1.getScoreInt();
 			}
 		});
-		int topWords = 100;
-		System.out.println("Top " + topWords + " most used words: ");
+		int topWords = 10;
+		System.out.println("Top " + topWords + " most used words: " + year + " " + topicOfInterest + " " + language);
 		{
 			int i = 0;
 			for (Tag tag : tags) {
@@ -800,7 +836,11 @@ def parseAuthors(content):
 		}
 		TestOpenCloud toc = new TestOpenCloud();
 		toc.show(cloud);
-		toc.saveImage(topicOfInterest + "-" + language + ".png");
+		if (year == -1) {
+			toc.saveImage(topicOfInterest + "-" + language + ".png");
+		} else {
+			toc.saveImage(year + "-" + language + ".png");
+		}
 	}
 	
 	private void showAuthorsByPublishedPapers() {
@@ -877,7 +917,7 @@ def parseAuthors(content):
 				" accurancy  " + + getAccurancy(tpTitleCount, fpTitleCount, fnTitleCount) + " f1 " + getFMeasure(tpTitleCount, fpTitleCount, fnTitleCount));
 		System.out.println("Total files matched meta: " + totalFilesMatchedMeta + "/" + totalParsedFiles);
 		
-		
+		System.out.println("Total unqiue authors: " + library.papersByAuthor.size());
 		System.out.println("Total papers by year:");
 		for (int year = startYear; year <= endYear; year++) {
 			System.out.println("\t" + year + ": " + library.getPapersByYear(year).size());
@@ -890,9 +930,15 @@ def parseAuthors(content):
 		
 		showAuthorsByPublishedPapers();
 		
+		for (int year = startYear; year <= endYear; year++) {
+			for (String lang : new String[] { "EN", "RS"} ) {
+				parsePapersForKeywords("FOOBAR...", lang, year);
+			}
+		}
+		
 		for (String topic : Library.getInstance().papersByTopic.keySet()) {
 			for (String lang : new String[] { "EN", "RS"} ) {
-				parsePapersForKeywords(topic, lang);
+				parsePapersForKeywords(topic, lang, -1);
 			}
 		}
 		System.exit(0);

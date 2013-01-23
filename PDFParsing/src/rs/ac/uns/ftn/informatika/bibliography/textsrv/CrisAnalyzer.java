@@ -42,6 +42,9 @@ public class CrisAnalyzer extends Analyzer {
 		//gajop added
 		"se", "na", "za", "da", "sa", "od", "ili", "koji", "kao", "po", "što", "koje", "kako", "koja",
 		"iz", "uz", "tako", "pri", "do", "ovaj", "ovom",
+		
+		//hacks
+		"uspesnost", "ki",
 	};
 	public static final String[] ENGLISH_STOP_WORDS ={
 	    "a", "an", "and", "are","as","at","be", "but",
@@ -52,6 +55,9 @@ public class CrisAnalyzer extends Analyzer {
 	
 	    //gajop added
 	    "which", "from", "can", "has", "we", "one", "its", "all", "also", "most", "some",
+	    
+	    //hacks
+	    "uspesnost", "ki",
 	};
 	
 	/**

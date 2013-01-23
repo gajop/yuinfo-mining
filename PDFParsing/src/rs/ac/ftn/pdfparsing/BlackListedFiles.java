@@ -15,6 +15,9 @@ public class BlackListedFiles {
 			"2011/vi/073.txt",
 			"2012/rmit/480.txt",
 			"2007/pi/070.txt",
+			//TODO: why aren't these working?,
+			"2010/pi/205.txt",
+			"2007/pi/079.txt",
 			
 			//abstract isn't named at all
 			"2010/vi/103.txt",
@@ -27,11 +30,7 @@ public class BlackListedFiles {
 			"2012/is/303.txt",
 			
 			//no abstract
-			"2006/infosys/246.txt",
-			
-			//TODO: why aren't these working?,
-			"2010/pi/205.txt",
-			"2007/pi/079.txt",
+			"2006/infosys/246.txt",			
 	};
 	HashMap<String, Boolean> blackListedMap = new HashMap<String, Boolean>();
 	
