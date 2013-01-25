@@ -70,10 +70,60 @@ public class PDFParsingMain {
 		
 	};
     Map<String, String> sameTopicMap = new HashMap<String, String>();
-	
+    
+    private String resolveTopic(String topic) {
+    	int i = 0;
+		while (sameTopicMap.containsKey(topic)) {
+			topic = sameTopicMap.get(topic);
+			if (++i > 100) {
+				throw new Error("recursive map, term: " + topic);
+			}
+		}
+		return topic;
+    }
+          
     private void populateSameTopics() {
         for (String[] pair : sameTopicPairs) {
         	sameTopicMap.put(pair[0], pair[1]);
+        }
+    }
+    
+    String [][] sameWordPairsEN = {
+        	{ "", "" },
+    };
+    
+    Map<String, String> sameWordMapEN = new HashMap<String, String>();
+    
+    String [][] sameWordPairsRS = {
+        	{ "", "" },
+    };    
+    Map<String, String> sameWordMapRS = new HashMap<String, String>();
+    
+    private String resolveWords(String word, String language) {    	
+    	Map<String, String> sameWordMap;    
+    	if (language.equals("EN")) {
+    		sameWordMap = sameWordMapEN;
+    	} else if (language.equals("RS")) {
+    		sameWordMap = sameWordMapRS;
+    	} else {
+    		return word;
+    	}
+    	int i = 0;
+		while (sameWordMap.containsKey(word)) {
+			word = sameWordMap.get(word);
+			if (++i > 100) {
+				throw new Error("recursive map, term: " + word);
+			}
+		}
+		return word;
+    }
+    
+    private void populateSameWords() {    
+        for (String[] pair : sameWordPairsEN) {
+        	sameWordMapEN.put(pair[0], pair[1]);
+        }
+        for (String[] pair : sameWordPairsRS) {
+        	sameWordMapRS.put(pair[0], pair[1]);
         }
     }
 
@@ -495,10 +545,7 @@ def parseAuthors(content):
 					startYear = Math.min(year, startYear);
 					endYear = Math.max(year, endYear);
 				} else if (!file.getName().equals("data")) {
-					topic = file.getName();
-					if (sameTopicMap.containsKey(topic)) {
-						topic = sameTopicMap.get(topic);
-					}
+					topic = resolveTopic(file.getName());
 				}
 				recurseDirectory(file);
 			} else {
@@ -694,7 +741,7 @@ def parseAuthors(content):
 		}
 	}
 	
-	//ok this is ugly now: FIXME: year is -1 if year check is done, if it's not -1 then we don't check the topicOfInterest...
+	//ok this is ugly now: FIXME: we check the year if it's not -1, otherwise we check the topicOfInterest
 	private void parsePapersForKeywords(String topicOfInterest, String language, int year) throws Exception {
 		CrisAnalyzer crisAnalyzer = new CrisAnalyzer();		
 
@@ -769,7 +816,7 @@ def parseAuthors(content):
 				String word = entry.getKey();
 				for (String[] stopWordSets : new String[][] { CrisAnalyzer.ENGLISH_STOP_WORDS, CrisAnalyzer.SERBIAN_STOP_WORDS}) {
 					for (String stopWord : stopWordSets) {
-						if (stopWord.equals(word)) {
+						if (word.matches(stopWord)) {
 							isStopWord = true;
 							break;
 						}
@@ -805,9 +852,9 @@ def parseAuthors(content):
 				}
 				double idf;
 				if (year == -1) {
-					idf = Math.log(topicStats.size() / occurInTopicCount);
+					idf = Math.log(topicStats.size() * 1.0 / occurInTopicCount);
 				} else {
-					idf = Math.log(yearStats.size() / occurInTopicCount);
+					idf = Math.log(yearStats.size() * 1.0 / occurInTopicCount);
 				}
 				double value = entry.getValue() * idf;
 				Tag tag = new Tag(entry.getKey(), value);
@@ -821,7 +868,7 @@ def parseAuthors(content):
 				return o2.getScoreInt() - o1.getScoreInt();
 			}
 		});
-		int topWords = 10;
+		int topWords = 100;
 		System.out.println("Top " + topWords + " most used words: " + year + " " + topicOfInterest + " " + language);
 		{
 			int i = 0;
@@ -830,7 +877,7 @@ def parseAuthors(content):
 					break;
 				}
 				cloud.addTag(tag);
-				System.out.println((i + 1) + ". " + tag.getName() + " " + tag.getScoreInt());
+				System.out.println((i + 1) + ". " + tag.getName() + " " + tag.getScore());
 				i++;
 			}
 		}
@@ -897,8 +944,9 @@ def parseAuthors(content):
 	private void run() throws Exception {
 		CroSerUtils.loadStemDictionary();
 		populateSameTopics();
+		populateSameWords();
 		File dataDir = new File("../data/");
-		recurseDirectory(dataDir);		
+		recurseDirectory(dataDir);
 		parseAllFiles();
 		recurseMeta(dataDir);		
 		library.redoMappings();
@@ -932,13 +980,15 @@ def parseAuthors(content):
 		
 		for (int year = startYear; year <= endYear; year++) {
 			for (String lang : new String[] { "EN", "RS"} ) {
-				parsePapersForKeywords("FOOBAR...", lang, year);
+				parsePapersForKeywords("", lang, year);
+				System.in.read();
 			}
 		}
 		
 		for (String topic : Library.getInstance().papersByTopic.keySet()) {
 			for (String lang : new String[] { "EN", "RS"} ) {
 				parsePapersForKeywords(topic, lang, -1);
+				System.in.read();
 			}
 		}
 		System.exit(0);

@@ -45,6 +45,10 @@ public class CrisAnalyzer extends Analyzer {
 		
 		//hacks
 		"uspesnost", "ki",
+		"rac", "nac", "unarsk", "vis", "kih", "ava", "moz", "znac", "aj", "avanj", "ena", "ajn", "zas", "eni",
+		"vaz", "iti", "ke", "uvelic", "anje", "eg", "vrs", "nih", "nost", "kim", "anja", "unarodn", "aju",
+		"en", "em", "nosti", "ivanj", "enem", "i:", "um", "ivanja.", "nu", "ene", "e,", "ter", "ine", "ic", "ij", "nog", "aja.",
+		"aka", "bb", "itav", "oj", "inu",
 	};
 	public static final String[] ENGLISH_STOP_WORDS ={
 	    "a", "an", "and", "are","as","at","be", "but",
@@ -58,6 +62,13 @@ public class CrisAnalyzer extends Analyzer {
 	    
 	    //hacks
 	    "uspesnost", "ki",
+	    "ra", "mrez", "st", "nj", "rac", "enj", "nac", "ci", "vlj", "sm", "vizuelizacij", "va", "moz",
+	    "ko", "dn", "nost", "re", "saobrac", "aja", "ava", "enja", "pr", "ku", "korisc", "ke", "nih", "linija", "ri",
+	    "vi", "vo", "nosti", "omoguc*", "podatak.*", "prenos.*", "enjem", "linka", "izmedj", "ka", "moguc", "softversk.*", "odredj",
+	    "okruz", "sluc.*", "prac", "aj", "pi", "sluz", "moibiln.*",
+	    "cvor.*", "antena", "sloze.*", "takt*", "evidenci*", ".oko", "uredjaj.*", "lj", "devizn.*", "topologij.*", "ed", "kl",
+	    "virtualni.*", "povec.*", "ponasan.*", "poruk.*", "kre", "au", "ve", "itih", "tpo", "enih", "ifra", "medj", "ina", "eno",
+	    "efekt.*", "organizacij.*", "slajd.*", 
 	};
 	
 	/**
