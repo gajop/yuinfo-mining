@@ -793,7 +793,7 @@ def parseAuthors(content):
 		return false;
 	}
 	
-	private void printTags(List<Tag> tags, String topicOfInterest, String language, int year, int totalWords, int totalLowInfoWords) {
+	private void printTags(List<Tag> tags, String topicOfInterest, String language, int year, int totalWords, int totalLowInfoWords, int ngram) {
 		System.out.println("Total : " + totalWords + " , contain info count: " + (totalWords - totalLowInfoWords));
 		Cloud cloud = new Cloud();
 		Collections.sort(tags, new Comparator<Tag>(){
@@ -805,7 +805,7 @@ def parseAuthors(content):
 			}
 		});
 		int topWords = 30;		
-		System.out.println("Top " + topWords + " most used words: " + year + " " + topicOfInterest + " " + language);
+		System.out.println("Top " + topWords + " most used words: " + year + " " + topicOfInterest + " " + language + " ngram: " + ngram);
 		{
 			int i = 0;
 			for (Tag tag : tags) {
@@ -959,7 +959,7 @@ def parseAuthors(content):
 				tags.add(tag);
 			}
 		}
-		printTags(tags, topicOfInterest, language, year, totalWords, totalLowInfoWords);
+		printTags(tags, topicOfInterest, language, year, totalWords, totalLowInfoWords, ngram);
 	}
 	
 	private void showAuthorsByPublishedPapers() {
@@ -1052,15 +1052,19 @@ def parseAuthors(content):
 		
 		for (int year = startYear; year <= endYear; year++) {
 			for (String lang : new String[] { "EN", "RS"} ) {
-				parsePapersForKeywords("", lang, year, 2);
-				//System.in.read();
+				for (int i = 1; i <= 3; i++) {
+					parsePapersForKeywords("", lang, year, i);
+					//System.in.read();
+				}
 			}
 		}
 		
 		for (String topic : Library.getInstance().papersByTopic.keySet()) {
 			for (String lang : new String[] { "EN", "RS"} ) {
-				parsePapersForKeywords(topic, lang, -1, 2);
-				//System.in.read();
+				for (int i = 1; i <= 3; i++) {
+					parsePapersForKeywords(topic, lang, -1, i);
+					//	System.in.read();
+				}
 			}
 		}
 		System.exit(0);
