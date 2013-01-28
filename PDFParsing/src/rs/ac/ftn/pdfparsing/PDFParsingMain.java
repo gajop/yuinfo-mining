@@ -18,6 +18,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Queue;
 import java.util.Random;
 import java.util.Vector;
 import java.util.regex.Matcher;
@@ -741,14 +742,99 @@ def parseAuthors(content):
 		}
 	}
 	
+	private boolean isStopWord(String term) {
+		for (String word : term.split("\\s+")) {
+			for (String[] stopWordSets : new String[][] { CrisAnalyzer.ENGLISH_STOP_WORDS, CrisAnalyzer.SERBIAN_STOP_WORDS}) {
+				for (String stopWord : stopWordSets) {				
+					if (word.matches(stopWord)) {
+						return true;
+					}
+				}
+			}
+			try {
+				Integer.valueOf(word);
+				return true;
+			} catch (Exception ex) {						
+			}
+			if (word.matches("\\d+\\.") || word.length() < 2) {
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	String [] lowInfoWordsEN = new String[] {
+			"paper", "present", "system", "us", "sistema", "data", "implement", "sto", "describ", "develop", "sto", "problem", "have", "base", "method", "solut.*",
+			"softwar.*", "model", "word", "words", "result", "show", "more",
+	};
+	String [] lowInfoWordsRS = new String[] {
+			"procentualn", "delaju", "razvoj", "sistem", "podatk", "proces", "osnovn", "njihov", "analiz", "metod", "vajd", "slika", "vec", "sve", "samo", "ta",
+			"jedn", "cilj", "resenj", "enje", "sve", "pristup", "osnov", "prim", "inform.*", "mode", "model", "dat", "prikaz", "velik", "broj", "pregled", "rec", "reci",
+	};
+	
+	private boolean isLowInfoTerm(String term, String language) {
+		/*String [] lowInfoWords;
+		if (language.equals("EN")) {
+			lowInfoWords = lowInfoWordsEN;
+		} else if (language.equals("RS")) {
+			lowInfoWords = lowInfoWordsRS;
+		} else {
+			throw new Error("no such language <(!_!)? " + language);
+		}*/
+		for (String [] lowInfoWords : new String [][] { lowInfoWordsEN, lowInfoWordsRS }) {
+			for (String word : term.split("\\s+")) {			
+				for (String lowInfoWord : lowInfoWords) {
+					if (word.matches(lowInfoWord)) {
+						return true;
+					}
+				}
+			}
+		}
+		return false;
+	}
+	
+	private void printTags(List<Tag> tags, String topicOfInterest, String language, int year, int totalWords, int totalLowInfoWords) {
+		System.out.println("Total : " + totalWords + " , contain info count: " + (totalWords - totalLowInfoWords));
+		Cloud cloud = new Cloud();
+		Collections.sort(tags, new Comparator<Tag>(){
+			@Override
+			public int compare(Tag o1, Tag o2) {
+		        if (o1.getScore() < o2.getScore()) return 1;
+		        if (o1.getScore() > o2.getScore()) return -1;
+		        return 0;
+			}
+		});
+		int topWords = 30;		
+		System.out.println("Top " + topWords + " most used words: " + year + " " + topicOfInterest + " " + language);
+		{
+			int i = 0;
+			for (Tag tag : tags) {
+				if (i >= topWords) {
+					break;
+				}
+				cloud.addTag(tag);
+				System.out.println((i + 1) + ". " + tag.getName() + " " + tag.getScore());
+				i++;
+			}
+		}
+		//TestOpenCloud toc = new TestOpenCloud();
+		//toc.show(cloud);
+		if (year == -1) {
+		//	toc.saveImage(topicOfInterest + "-" + language + ".png");
+		} else {
+		//	toc.saveImage(year + "-" + language + ".png");
+		}
+	}
+	
 	//ok this is ugly now: FIXME: we check the year if it's not -1, otherwise we check the topicOfInterest
 	//it calculates frequency now
-	private void parsePapersForKeywords(String topicOfInterest, String language, int year) throws Exception {
+	private void parsePapersForKeywords(String topicOfInterest, String language, int year, int ngram) throws Exception {
 		CrisAnalyzer crisAnalyzer = new CrisAnalyzer();		
 
 		HashMap<String, KeywordStats> topicStats = new HashMap<String, KeywordStats>();
 		HashMap<Integer, KeywordStats> yearStats = new HashMap<Integer, KeywordStats>();
 		int totalWords = 0;
+		int totalLowInfoWords = 0;
 		for (Paper paper : library.getPapers()) {
 			KeywordStats ks;
 			if (topicStats.containsKey(paper.getTopic())) {
@@ -786,10 +872,25 @@ def parseAuthors(content):
 					ks.addWordOccurance(word.toLowerCase());
 				}*/
 				Token token;
-				while ((token = ts.next()) != null) {
-					String word = token.term();
-					ks.addWordOccurance(word.toLowerCase());
-					ksYear.addWordOccurance(word.toLowerCase());
+				LinkedList<String> queue = new LinkedList<String>();
+				for (int i = 0; i < ngram; i++) {
+					token = ts.next();
+					if (token == null) { 
+						break;
+					}
+					String word = token.term().toLowerCase();
+					queue.add(word);
+				}
+				while ((token = ts.next()) != null) {										
+					String term = queue.poll();
+					for (int i = 0; i < ngram - 1; i++) {
+						term = term + " " + queue.get(i);
+					}
+					ks.addWordOccurance(term);
+					ksYear.addWordOccurance(term);
+					
+					String word = token.term().toLowerCase();
+					queue.add(word);
 				}
 			}
 		}
@@ -807,43 +908,27 @@ def parseAuthors(content):
 		        return o2.getValue() - o1.getValue();
 		    }
 		});
-		
-		{
-			List<Entry<String, Integer>> tmpWordOccurances = new ArrayList<Map.Entry<String,Integer>>();
-			for (Entry<String, Integer> entry : wordOccurances) {
-				boolean isStopWord = false;
-				String word = entry.getKey();
-				for (String[] stopWordSets : new String[][] { CrisAnalyzer.ENGLISH_STOP_WORDS, CrisAnalyzer.SERBIAN_STOP_WORDS}) {
-					for (String stopWord : stopWordSets) {
-						if (word.matches(stopWord)) {
-							isStopWord = true;
-							break;
-						}
-					}
-					if (isStopWord) {
-						break;
-					}					
-				}
-				try {
-					Integer.valueOf(word);
-					isStopWord = true;
-				} catch (Exception ex) {						
-				}
-				if (isStopWord || word.length() < 2) {
-					continue;
-				}
-				tmpWordOccurances.add(entry);
-				totalWords += entry.getValue();
+			
+		List<Entry<String, Integer>> tmpWordOccurances = new ArrayList<Map.Entry<String,Integer>>();
+		for (Entry<String, Integer> entry : wordOccurances) {
+			if (isStopWord(entry.getKey())) {
+				continue;
 			}
-			wordOccurances = tmpWordOccurances;
+			if (isLowInfoTerm(entry.getKey(), language)) {
+				totalLowInfoWords++;
+				continue;
+			}
+			tmpWordOccurances.add(entry);
+			totalWords += entry.getValue();
 		}
-		
+		wordOccurances = tmpWordOccurances;
+			
 		List<Tag> tags = new ArrayList<Tag>();
-		
-		Cloud cloud = new Cloud();
 		{
 			for (Entry<String, Integer> entry : wordOccurances) {
 				String word = entry.getKey();
+				double tf = entry.getValue();// * 1.0 / totalWords;
+				
 
 				double occurInTopicCount = 0;
 				if (year == -1) {
@@ -867,41 +952,14 @@ def parseAuthors(content):
 				} else {
 					idf = Math.log(yearStats.size() * 1.0 / occurInTopicCount);
 				}
-				double tf = entry.getValue();// * 1.0 / totalWords;
-				double tfidf = tf * idf;				
+				double tfidf = tf * idf;
+				
+				
 				Tag tag = new Tag(entry.getKey(), tf);
 				tags.add(tag);
 			}
 		}
-
-		Collections.sort(tags, new Comparator<Tag>(){
-			@Override
-			public int compare(Tag o1, Tag o2) {
-		        if (o1.getScore() < o2.getScore()) return 1;
-		        if (o1.getScore() > o2.getScore()) return -1;
-		        return 0;
-			}
-		});
-		int topWords = 30;
-		System.out.println("Top " + topWords + " most used words: " + year + " " + topicOfInterest + " " + language);
-		{
-			int i = 0;
-			for (Tag tag : tags) {
-				if (i >= topWords) {
-					break;
-				}
-				cloud.addTag(tag);
-				System.out.println((i + 1) + ". " + tag.getName() + " " + tag.getScore());
-				i++;
-			}
-		}
-		//TestOpenCloud toc = new TestOpenCloud();
-		//toc.show(cloud);
-		if (year == -1) {
-		//	toc.saveImage(topicOfInterest + "-" + language + ".png");
-		} else {
-		//	toc.saveImage(year + "-" + language + ".png");
-		}
+		printTags(tags, topicOfInterest, language, year, totalWords, totalLowInfoWords);
 	}
 	
 	private void showAuthorsByPublishedPapers() {
@@ -994,14 +1052,14 @@ def parseAuthors(content):
 		
 		for (int year = startYear; year <= endYear; year++) {
 			for (String lang : new String[] { "EN", "RS"} ) {
-				parsePapersForKeywords("", lang, year);
+				parsePapersForKeywords("", lang, year, 2);
 				//System.in.read();
 			}
 		}
 		
 		for (String topic : Library.getInstance().papersByTopic.keySet()) {
 			for (String lang : new String[] { "EN", "RS"} ) {
-				parsePapersForKeywords(topic, lang, -1);
+				parsePapersForKeywords(topic, lang, -1, 2);
 				//System.in.read();
 			}
 		}
