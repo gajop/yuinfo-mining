@@ -14,7 +14,7 @@ public class KeywordStats {
 			wordOccuranceMap.put(word, 1);
 		} else {
 			wordOccurance = wordOccurance + 1;
-			wordOccuranceMap.put(word, wordOccurance + 1);
+			wordOccuranceMap.put(word, wordOccurance);
 		}
 	}
 	public HashMap<String, Integer> getWordOccuranceMap() {

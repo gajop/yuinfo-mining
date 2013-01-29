@@ -430,6 +430,10 @@ def parseAuthors(content):
 		totalParsedFiles++;
 		if (displayPapers) System.out.println("Parsing plaintext file: " + filePath);
 		String content = LatCyrUtils.toLatin(FileUtils.readFileToString(file));
+		if (totalParsedFiles < 100) {
+			System.out.println(content);
+			System.in.read();
+		}
 	//	System.out.println(content);		
 		
 		String abstracts [] = parseAbstract(content);
@@ -765,11 +769,13 @@ def parseAuthors(content):
 	
 	String [] lowInfoWordsEN = new String[] {
 			"paper", "present", "system", "us", "sistema", "data", "implement", "sto", "describ", "develop", "sto", "problem", "have", "base", "method", "solut.*",
-			"softwar.*", "model", "word", "words", "result", "show", "more",
+			"softwar.*", "model", "word", "words", "result", "show", "more", "new", "process", "applic", "possibl", "provid", "been", "basic", "enabl", "give", "perform", "analysi", "through",
+			"differ", "veri",
 	};
 	String [] lowInfoWordsRS = new String[] {
 			"procentualn", "delaju", "razvoj", "sistem", "podatk", "proces", "osnovn", "njihov", "analiz", "metod", "vajd", "slika", "vec", "sve", "samo", "ta",
 			"jedn", "cilj", "resenj", "enje", "sve", "pristup", "osnov", "prim", "inform.*", "mode", "model", "dat", "prikaz", "velik", "broj", "pregled", "rec", "reci",
+			"uvod", "process", "servi", "zbog", "toga", "bez", "opisan", "softver", "sta", "predocen", "ovog", "nacin", "aplikacij", "imac",
 	};
 	
 	private boolean isLowInfoTerm(String term, String language) {
@@ -781,19 +787,31 @@ def parseAuthors(content):
 		} else {
 			throw new Error("no such language <(!_!)? " + language);
 		}*/
-		for (String [] lowInfoWords : new String [][] { lowInfoWordsEN, lowInfoWordsRS }) {
-			for (String word : term.split("\\s+")) {			
+		for (String word : term.split("\\s+")) {
+			word = word.trim();
+			if (word.equals("")) {
+				continue;
+			}
+			boolean notLowInfo = true;
+			for (String [] lowInfoWords : new String [][] { lowInfoWordsEN, lowInfoWordsRS }) {				
 				for (String lowInfoWord : lowInfoWords) {
 					if (word.matches(lowInfoWord)) {
-						return true;
+						notLowInfo = false;
+						break;
 					}
 				}
+				if (!notLowInfo) {
+					break;
+				}				
+			}
+			if (notLowInfo) {
+				return false;
 			}
 		}
-		return false;
+		return true;
 	}
 	
-	private void printTags(List<Tag> tags, String topicOfInterest, String language, int year, int totalWords, int totalLowInfoWords, int ngram) {
+	private void printTags(List<Tag> tags, String topicOfInterest, String language, int year, int totalWords, int totalLowInfoWords, int ngram, boolean trackTermsPerPaper) {
 		System.out.println("Total : " + totalWords + " , contain info count: " + (totalWords - totalLowInfoWords));
 		Cloud cloud = new Cloud();
 		Collections.sort(tags, new Comparator<Tag>(){
@@ -805,7 +823,7 @@ def parseAuthors(content):
 			}
 		});
 		int topWords = 30;		
-		System.out.println("Top " + topWords + " most used words: " + year + " " + topicOfInterest + " " + language + " ngram: " + ngram);
+		System.out.println("Top " + topWords + " most used words: " + year + " " + topicOfInterest + " " + language + " ngram: " + ngram + " limit one per paper: " + trackTermsPerPaper);
 		{
 			int i = 0;
 			for (Tag tag : tags) {
@@ -813,7 +831,7 @@ def parseAuthors(content):
 					break;
 				}
 				cloud.addTag(tag);
-				System.out.println((i + 1) + ". " + tag.getName() + " " + tag.getScore());
+				System.out.println((i + 1) + ". " + tag.getName() + " " + tag.getScoreInt());
 				i++;
 			}
 		}
@@ -828,7 +846,7 @@ def parseAuthors(content):
 	
 	//ok this is ugly now: FIXME: we check the year if it's not -1, otherwise we check the topicOfInterest
 	//it calculates frequency now
-	private void parsePapersForKeywords(String topicOfInterest, String language, int year, int ngram) throws Exception {
+	private void parsePapersForKeywords(String topicOfInterest, String language, int year, int ngram, boolean trackTermsPerPaper) throws Exception {
 		CrisAnalyzer crisAnalyzer = new CrisAnalyzer();		
 
 		HashMap<String, KeywordStats> topicStats = new HashMap<String, KeywordStats>();
@@ -836,6 +854,7 @@ def parseAuthors(content):
 		int totalWords = 0;
 		int totalLowInfoWords = 0;
 		for (Paper paper : library.getPapers()) {
+			HashMap<String, Boolean> addedTerms = new HashMap<String, Boolean>(); 
 			KeywordStats ks;
 			if (topicStats.containsKey(paper.getTopic())) {
 				ks = topicStats.get(paper.getTopic());
@@ -886,8 +905,11 @@ def parseAuthors(content):
 					for (int i = 0; i < ngram - 1; i++) {
 						term = term + " " + queue.get(i);
 					}
-					ks.addWordOccurance(term);
-					ksYear.addWordOccurance(term);
+					if (!trackTermsPerPaper || !addedTerms.containsKey(term)) {
+						ks.addWordOccurance(term);
+						ksYear.addWordOccurance(term);
+						addedTerms.put(term, true);
+					}
 					
 					String word = token.term().toLowerCase();
 					queue.add(word);
@@ -914,12 +936,12 @@ def parseAuthors(content):
 			if (isStopWord(entry.getKey())) {
 				continue;
 			}
+			totalWords += entry.getValue();
 			if (isLowInfoTerm(entry.getKey(), language)) {
-				totalLowInfoWords++;
+				totalLowInfoWords+= entry.getValue();
 				continue;
 			}
 			tmpWordOccurances.add(entry);
-			totalWords += entry.getValue();
 		}
 		wordOccurances = tmpWordOccurances;
 			
@@ -959,7 +981,7 @@ def parseAuthors(content):
 				tags.add(tag);
 			}
 		}
-		printTags(tags, topicOfInterest, language, year, totalWords, totalLowInfoWords, ngram);
+		printTags(tags, topicOfInterest, language, year, totalWords, totalLowInfoWords, ngram, trackTermsPerPaper);
 	}
 	
 	private void showAuthorsByPublishedPapers() {
@@ -1039,13 +1061,29 @@ def parseAuthors(content):
 		
 		System.out.println("Total unqiue authors: " + library.papersByAuthor.size());
 		System.out.println("Total papers by year:");
-		for (int year = startYear; year <= endYear; year++) {
-			System.out.println("\t" + year + ": " + library.getPapersByYear(year).size());
+		for (String language : new String[] { "EN", "RS"}) {
+			for (int year = startYear; year <= endYear; year++) {
+				int totalPapers = 0;
+				for (Paper paper : library.getPapersByYear(year)) {
+					if ((language.equals("EN") && paper.getAbstractEN() != null) || (language.equals("RS") && paper.getAbstractRS() != null)) {
+						totalPapers++;
+					}
+				}
+				System.out.println("\t" + year + ": " + totalPapers);
+			}
 		}
 		
 		System.out.println("Total papers by topic:");
-		for (Entry<String, List<Paper>> entrySet : Library.getInstance().papersByTopic.entrySet()) {			
-			System.out.println(entrySet.getKey() + ": " + entrySet.getValue().size());
+		for (String language : new String[] { "EN", "RS"}) {
+			for (Entry<String, List<Paper>> entrySet : Library.getInstance().papersByTopic.entrySet()) {
+				int totalPapers = 0;
+				for (Paper paper : entrySet.getValue()) {
+					if ((language.equals("EN") && paper.getAbstractEN() != null) || (language.equals("RS") && paper.getAbstractRS() != null)) {
+						totalPapers++;
+					}
+				}
+				System.out.println(entrySet.getKey() + " "  + language + ": " + totalPapers);
+			}
 		}
 		
 		showAuthorsByPublishedPapers();
@@ -1053,7 +1091,9 @@ def parseAuthors(content):
 		for (int year = startYear; year <= endYear; year++) {
 			for (String lang : new String[] { "EN", "RS"} ) {
 				for (int i = 1; i <= 3; i++) {
-					parsePapersForKeywords("", lang, year, i);
+					for (boolean trackTermsPerPaper : new boolean [] { true, false} ) {
+						parsePapersForKeywords("", lang, year, i, trackTermsPerPaper);
+					}
 					//System.in.read();
 				}
 			}
@@ -1062,7 +1102,9 @@ def parseAuthors(content):
 		for (String topic : Library.getInstance().papersByTopic.keySet()) {
 			for (String lang : new String[] { "EN", "RS"} ) {
 				for (int i = 1; i <= 3; i++) {
-					parsePapersForKeywords(topic, lang, -1, i);
+					for (boolean trackTermsPerPaper : new boolean [] { true, false} ) {
+						parsePapersForKeywords(topic, lang, -1, i, trackTermsPerPaper);
+					}
 					//	System.in.read();
 				}
 			}
